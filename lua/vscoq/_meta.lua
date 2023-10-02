@@ -28,7 +28,7 @@
 
 ---@class vscoq.Goal
 ---@field id integer
----@field goal string
+---@field goal vscoq.PpString
 ---@field hypotheses vscoq.PpString[]
 
 ---@class vscoq.ProofViewGoals

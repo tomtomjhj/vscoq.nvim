@@ -189,13 +189,48 @@ local function searchResult_notification_handler(_, result, _, _)
   assert(the_client)
 end
 
+-- TODO render PpString
+---@param pp vscoq.PpString
+---@return string
+local function render_PpString(pp)
+  return vim.inspect(pp)
+end
+
+---@param goal vscoq.Goal
+---@param i integer
+---@param n integer
+---@return string
+local function render_goal(i, n, goal)
+  local lines = {}
+  lines[#lines+1] = string.format('Goal %d (%d / %d)', goal.id, i, n)
+  for _, hyp in ipairs(goal.hypotheses) do
+    lines[#lines+1] = render_PpString(hyp)
+  end
+  lines[#lines+1] = ''
+  lines[#lines+1] = '========================================'
+  lines[#lines+1] = ''
+  lines[#lines+1] = render_PpString(goal.goal)
+  return table.concat(lines, '\n')
+end
+
+---@param goals vscoq.Goal[]
+function VSCoqNvim:render_goals(goals)
+  local rendered = {}
+  for i, goal in ipairs(goals) do
+    rendered[#rendered+1] = render_goal(i, #goals, goal)
+  end
+  local lines = {}
+  -- NOTE: each Pp can contain newline, which isn't allowed by nvim_buf_set_lines
+  vim.list_extend(lines, vim.split(table.concat(rendered, '\n\n\n────────────────────────────────────────────────────────────\n'), '\n'))
+  -- TODO: proofView doesn't send what document it is for; file an issue
+  vim.api.nvim_buf_set_lines(self:get_info_bufnr(vim.api.nvim_get_current_buf()), 0, -1, false, lines)
+end
+
 ---@type lsp-handler
 local function proofView_notification_handler(_, result, _, _)
-  local params = result ---@type vscoq.ProofViewGoals
+  local params = result ---@type vscoq.ProofViewNotification
   assert(the_client)
-  -- TODO: server doesn't seem to send proofView notifications???
-  vim.print('proofView', params)
-  -- TODO: render proofView
+  the_client:render_goals(params.proof.goals)
 end
 
 ---@param bufnr buffer
@@ -235,7 +270,11 @@ function VSCoqNvim:interpretToPoint(bufnr, position)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   position = position or guess_position(bufnr)
   local params = {
-    textDocument = vim.lsp.util.make_text_document_params(bufnr),
+    textDocument = {
+      uri = vim.uri_from_bufnr(bufnr),
+      -- TODO: this is not used in the server; file an issue to use TextDocumentIdentifier
+      version = vim.lsp.util.buf_versions[bufnr],
+    },
     position = make_position_params(bufnr, position, self.lc.offset_encoding)
   }
   return self.lc.notify("vscoq/interpretToPoint", params)
