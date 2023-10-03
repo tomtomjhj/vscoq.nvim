@@ -89,8 +89,6 @@ local the_client
 -- The server itself doesn't have default config values,
 -- so we should forward the config as `init_options`, not `settings`.
 --
--- TODO: Config change should both change client config and send didChangeConfiguration notifcation.
---
 -- https://github.com/coq-community/vscoq/blob/main/client/package.json
 -- https://github.com/coq-community/vscoq/blob/main/language-server/protocol/settings.ml
 -- https://github.com/coq-community/vscoq/blob/main/docs/protocol.md#configuration
@@ -357,7 +355,6 @@ end
 function VSCoqNvim:step(direction, bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   local params = {
-    -- TODO: version is not used in the server; file an issue to use TextDocumentIdentifier
     textDocument = make_versioned_text_document_params(bufnr),
   }
   local method
@@ -515,8 +512,3 @@ return {
   client = function() return the_client end,
   setup = setup,
 }
-
--- TODO: change tracking is broken?
--- Sometimes change tracking seems to be broken
--- * vscoqtop randomly crashes(?) when editing
--- * edit and interpretToPoint elsewhere → the same proofview or wrong highlight region
