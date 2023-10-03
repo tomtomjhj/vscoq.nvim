@@ -151,16 +151,8 @@ local function updateHighlights_notification_handler(_, result, _, _)
   assert(the_client)
   local bufnr = vim.uri_to_bufnr(params.uri)
   vim.api.nvim_buf_clear_namespace(bufnr, the_client.highlight_ns, 0, -1)
-  for _, range in ipairs(params.processedRange) do
-    vim.highlight.range(
-      bufnr,
-      the_client.highlight_ns,
-      'CoqtailChecked',
-      position_lsp_to_api(bufnr, range['start'], the_client.lc.offset_encoding),
-      position_lsp_to_api(bufnr, range['end'], the_client.lc.offset_encoding),
-      { priority = vim.highlight.priorities.user }
-    )
-  end
+  -- TODO: ranges are not disjoint? processingRange is always the entire buffer????
+  -- TODO: buffer text may have changed, so the positions may not be valid
   for _, range in ipairs(params.parsedRange) do
     vim.highlight.range(
       bufnr,
@@ -171,7 +163,16 @@ local function updateHighlights_notification_handler(_, result, _, _)
       { priority = vim.highlight.priorities.user }
     )
   end
-  -- TODO: processingRange is always the entire buffer?
+  for _, range in ipairs(params.processedRange) do
+    vim.highlight.range(
+      bufnr,
+      the_client.highlight_ns,
+      'CoqtailChecked',
+      position_lsp_to_api(bufnr, range['start'], the_client.lc.offset_encoding),
+      position_lsp_to_api(bufnr, range['end'], the_client.lc.offset_encoding),
+      { priority = vim.highlight.priorities.user + 1 }
+    )
+  end
 end
 
 ---@type lsp-handler
@@ -189,39 +190,77 @@ local function searchResult_notification_handler(_, result, _, _)
   assert(the_client)
 end
 
--- TODO render PpString
+-- See pp.tsx.
 ---@param pp vscoq.PpString
+---@param mode? "horizontal"|"vertical"
 ---@return string
-local function render_PpString(pp)
-  return vim.inspect(pp)
+local function render_PpString(pp, mode)
+  mode = mode or "horizontal"
+  if pp[1] == "Ppcmd_empty" then
+    return ''
+  elseif pp[1] == "Ppcmd_string" then
+    return pp[2]
+  elseif pp[1] == "Ppcmd_glue" then
+    return table.concat(vim.tbl_map(render_PpString, pp[2]), '')
+  elseif pp[1] == "Ppcmd_box" then
+    if pp[2][1] == "Pp_hbox" then
+      mode = "horizontal"
+    elseif pp[2][1] == "Pp_vbox" then
+      mode = "vertical"
+    -- TODO: proper support for hvbox and hovbox (not implemented in vscode client either)
+    elseif pp[2][1] == "Pp_hvbox" then
+      mode = "horizontal"
+    elseif pp[2][1] == "Pp_hovbox" then
+      mode = "horizontal"
+    end
+    return render_PpString(pp[3], mode)
+  elseif pp[1] == "Ppcmd_tag" then
+    -- TODO: use PpTag for highlighting (difficult)
+    return render_PpString(pp[3])
+  elseif pp[1] == "Ppcmd_print_break" then
+    if mode == "horizontal" then
+      return string.rep(" ", pp[2])
+    elseif mode == "vertical" then
+      return "\n"
+    end
+    error()
+  elseif pp[1] == "Ppcmd_force_newline" then
+    return "\n"
+  elseif pp[1] == "Ppcmd_comment" then
+    return vim.inspect(pp[2])
+  end
+  error(pp[1])
 end
 
 ---@param goal vscoq.Goal
 ---@param i integer
 ---@param n integer
----@return string
+---@return string[]
 local function render_goal(i, n, goal)
   local lines = {}
   lines[#lines+1] = string.format('Goal %d (%d / %d)', goal.id, i, n)
   for _, hyp in ipairs(goal.hypotheses) do
-    lines[#lines+1] = render_PpString(hyp)
+    vim.list_extend(lines, vim.split(render_PpString(hyp), '\n'))
   end
   lines[#lines+1] = ''
   lines[#lines+1] = '========================================'
   lines[#lines+1] = ''
-  lines[#lines+1] = render_PpString(goal.goal)
-  return table.concat(lines, '\n')
+  vim.list_extend(lines, vim.split(render_PpString(goal.goal), '\n'))
+  return lines
 end
 
 ---@param goals vscoq.Goal[]
 function VSCoqNvim:render_goals(goals)
-  local rendered = {}
-  for i, goal in ipairs(goals) do
-    rendered[#rendered+1] = render_goal(i, #goals, goal)
-  end
   local lines = {}
-  -- NOTE: each Pp can contain newline, which isn't allowed by nvim_buf_set_lines
-  vim.list_extend(lines, vim.split(table.concat(rendered, '\n\n\n────────────────────────────────────────────────────────────\n'), '\n'))
+  for i, goal in ipairs(goals) do
+    if i > 1 then
+      lines[#lines+1] = ''
+      lines[#lines+1] = ''
+      lines[#lines+1] = '────────────────────────────────────────────────────────────'
+      lines[#lines+1] = ''
+    end
+    vim.list_extend(lines, render_goal(i, #goals, goal))
+  end
   -- TODO: proofView doesn't send what document it is for; file an issue
   vim.api.nvim_buf_set_lines(self:get_info_bufnr(vim.api.nvim_get_current_buf()), 0, -1, false, lines)
 end
@@ -230,7 +269,9 @@ end
 local function proofView_notification_handler(_, result, _, _)
   local params = result ---@type vscoq.ProofViewNotification
   assert(the_client)
-  the_client:render_goals(params.proof.goals)
+  if params.proof then
+    the_client:render_goals(params.proof.goals)
+  end
 end
 
 ---@param bufnr buffer
@@ -393,4 +434,7 @@ return {
   setup = setup,
 }
 
--- TODO: vscoqtop randomly crashes(?) when editing
+-- TODO: change tracking is broken?
+-- Sometimes change tracking seems to be broken
+-- * vscoqtop randomly crashes(?) when editing
+-- * edit and interpretToPoint elsewhere → the same proofview or wrong highlight region
