@@ -3,6 +3,7 @@
 
 -- utils {{{
 
+-- TODO: The position sent by the server may be no longer valid in the current buffer text
 ---@param bufnr buffer
 ---@param position lsp.Position
 ---@param offset_encoding lsp.PositionEncodingKind
@@ -14,6 +15,12 @@ local function position_lsp_to_api(bufnr, position, offset_encoding)
     offset_encoding
   )
   return { position.line, idx }
+end
+
+---@param position APIPosition
+---@return MarkPosition
+local function position_api_to_mark(position)
+  return { position[1] + 1, position[2] }
 end
 
 ---@param bufnr buffer
@@ -31,6 +38,17 @@ local function make_position_params(bufnr, position, offset_encoding)
   col = vim.lsp.util._str_utfindex_enc(line, col, offset_encoding)
 
   return { line = row, character = col }
+end
+
+-- TODO: version is not used in the server, but errors if not included.
+-- file an issue to use TextDocumentIdentifier.
+---@param bufnr buffer
+---@return lsp.VersionedTextDocumentIdentifier
+local function make_versioned_text_document_params(bufnr)
+  return {
+      uri = vim.uri_from_bufnr(bufnr),
+      version = vim.lsp.util.buf_versions[bufnr],
+  }
 end
 
 ---@param bufnr buffer
@@ -144,6 +162,13 @@ function VSCoqNvim:new(client)
   return setmetatable(new, self)
 end
 
+---change config and send notification
+---@param new_config vscoq.Config
+function VSCoqNvim:update_config(new_config)
+  self.config = vim.tbl_deep_extend("force", self.config, new_config)
+  self.lc.notify('workspace/didChangeConfiguration', { settings = self.config })
+end
+
 ---@type lsp-handler
 ---vscoq.MoveCursorNotification
 local function updateHighlights_notification_handler(_, result, _, _)
@@ -152,7 +177,6 @@ local function updateHighlights_notification_handler(_, result, _, _)
   local bufnr = vim.uri_to_bufnr(params.uri)
   vim.api.nvim_buf_clear_namespace(bufnr, the_client.highlight_ns, 0, -1)
   -- TODO: ranges are not disjoint? processingRange is always the entire buffer????
-  -- TODO: buffer text may have changed, so the positions may not be valid
   for _, range in ipairs(params.parsedRange) do
     vim.highlight.range(
       bufnr,
@@ -179,7 +203,14 @@ end
 local function moveCursor_notification_handler(_, result, _, _)
   local params = result ---@type vscoq.MoveCursorNotification
   assert(the_client)
-  vim.print('moveCursor', params)
+  local bufnr = vim.uri_to_bufnr(params.uri)
+  local wins = vim.fn.win_findbuf(bufnr) or {}
+  if the_client.config.proof.mode == 0 and the_client.config.proof.cursor.sticky then
+    local position = position_api_to_mark(position_lsp_to_api(bufnr, params.range['end'], the_client.lc.offset_encoding))
+    for _, win in ipairs(wins) do
+      vim.api.nvim_win_set_cursor(win, position)
+    end
+  end
   -- if sticky and manual, set cursor to params.range['end']
 end
 
@@ -305,20 +336,35 @@ function VSCoqNvim:open_info_panel(bufnr)
   vim.api.nvim_set_current_win(win)
 end
 
----@param bufnr? buffer registered buffer
+---@param bufnr? buffer
 ---@param position? MarkPosition
 function VSCoqNvim:interpretToPoint(bufnr, position)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   position = position or guess_position(bufnr)
   local params = {
-    textDocument = {
-      uri = vim.uri_from_bufnr(bufnr),
-      -- TODO: this is not used in the server; file an issue to use TextDocumentIdentifier
-      version = vim.lsp.util.buf_versions[bufnr],
-    },
+    textDocument = make_versioned_text_document_params(bufnr),
     position = make_position_params(bufnr, position, self.lc.offset_encoding)
   }
   return self.lc.notify("vscoq/interpretToPoint", params)
+end
+
+---@param direction "forward"|"backward"|"end"
+---@param bufnr? buffer
+function VSCoqNvim:step(direction, bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  local params = {
+    -- TODO: version is not used in the server; file an issue to use TextDocumentIdentifier
+    textDocument = make_versioned_text_document_params(bufnr),
+  }
+  local method
+  if direction == "forward" then
+    method = "vscoq/stepForward"
+  elseif direction == "backward" then
+    method = "vscoq/stepBackward"
+  else -- direction == "end"
+    method = "vscoq/interpretToEnd"
+  end
+  return self.lc.notify(method, params)
 end
 
 function VSCoqNvim:on_CursorMoved()
@@ -356,6 +402,25 @@ function VSCoqNvim:attach(bufnr)
     desc = "Unregister deleted/detached buffer",
     callback = function(ev) self:detach(ev.buf) end,
   })
+  vim.api.nvim_create_user_command('InterpretToPoint', function()
+    self:interpretToPoint()
+  end, {})
+  vim.api.nvim_create_user_command('Forward', function()
+    self:step('forward')
+  end, {})
+  vim.api.nvim_create_user_command('Backward', function()
+    self:step('backward')
+  end, {})
+  vim.api.nvim_create_user_command('ToEnd', function()
+    self:step('end')
+  end, {})
+  vim.api.nvim_create_user_command('ToggleManual', function()
+    self:update_config {
+      proof = {
+        mode = 1 - self.config.proof.mode,
+      },
+    }
+  end, {})
   self:interpretToPoint(bufnr)
 end
 
