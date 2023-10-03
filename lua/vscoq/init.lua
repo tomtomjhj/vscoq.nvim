@@ -386,6 +386,9 @@ function VSCoqNvim:detach(bufnr)
   if self.buffers[bufnr].proofview_bufnr then
     vim.api.nvim_buf_delete(self.buffers[bufnr].proofview_bufnr, { force = true })
   end
+  for _, cmd in ipairs({'InterpretToPoint', 'Forward', 'Backward', 'ToEnd', 'ToggleManual', 'Panels'}) do
+    vim.api.nvim_buf_del_user_command(bufnr, cmd)
+  end
   self.buffers[bufnr] = nil
 end
 
@@ -408,19 +411,19 @@ function VSCoqNvim:attach(bufnr)
     callback = function(ev) self:detach(ev.buf) end,
   })
 
-  vim.api.nvim_create_user_command('InterpretToPoint', function()
+  vim.api.nvim_buf_create_user_command(bufnr, 'InterpretToPoint', function()
     self:interpretToPoint()
-  end, {})
-  vim.api.nvim_create_user_command('Forward', function()
+  end, { bang = true })
+  vim.api.nvim_buf_create_user_command(bufnr, 'Forward', function()
     self:step('forward')
-  end, {})
-  vim.api.nvim_create_user_command('Backward', function()
+  end, { bang = true })
+  vim.api.nvim_buf_create_user_command(bufnr, 'Backward', function()
     self:step('backward')
-  end, {})
-  vim.api.nvim_create_user_command('ToEnd', function()
+  end, { bang = true })
+  vim.api.nvim_buf_create_user_command(bufnr, 'ToEnd', function()
     self:step('end')
-  end, {})
-  vim.api.nvim_create_user_command('ToggleManual', function()
+  end, { bang = true })
+  vim.api.nvim_buf_create_user_command(bufnr, 'ToggleManual', function()
     self:update_config {
       proof = {
         mode = 1 - self.vscoq.proof.mode,
@@ -429,10 +432,10 @@ function VSCoqNvim:attach(bufnr)
     if self.vscoq.proof.mode == 1 then
       self:interpretToPoint(bufnr)
     end
-  end, {})
-  vim.api.nvim_create_user_command('Panels', function()
+  end, { bang = true })
+  vim.api.nvim_buf_create_user_command(bufnr, 'Panels', function()
     self:open_proofview_panel()
-  end, {})
+  end, { bang = true })
 
   if self.vscoq.proof.mode == 1 then
     self:interpretToPoint(bufnr)
