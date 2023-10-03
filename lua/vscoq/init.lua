@@ -46,8 +46,8 @@ end
 ---@return lsp.VersionedTextDocumentIdentifier
 local function make_versioned_text_document_params(bufnr)
   return {
-      uri = vim.uri_from_bufnr(bufnr),
-      version = vim.lsp.util.buf_versions[bufnr],
+    uri = vim.uri_from_bufnr(bufnr),
+    version = vim.lsp.util.buf_versions[bufnr],
   }
 end
 
@@ -141,8 +141,8 @@ local default_config = {
 
 ---@class VSCoqNvim
 ---@field lc lsp.Client
----@field config vscoq.Config the current configuration
----@field buffers table<buffer, { info_bufnr: buffer }>
+---@field vscoq vscoq.Config the current configuration
+---@field buffers table<buffer, { proofview_bufnr: buffer }>
 ---@field debounce_timer uv_timer_t
 ---@field highlight_ns integer
 ---@field ag integer
@@ -151,22 +151,23 @@ VSCoqNvim.__index = VSCoqNvim
 
 ---@param client lsp.Client
 function VSCoqNvim:new(client)
-  local new = {}
-  new.lc = client
-  new.config = vim.deepcopy(client.config.init_options) --[[@as vscoq.Config]]
-  new.buffers = {}
-  new.debounce_timer = assert(vim.loop.new_timer(), 'Could not create timer')
-  new.config = default_config
-  new.highlight_ns = vim.api.nvim_create_namespace('vscoq-progress-' .. client.id)
-  new.ag = vim.api.nvim_create_augroup("vscoq-" .. client.id, { clear = true })
+  ---@type VSCoqNvim
+  local new = {
+    lc = client,
+    vscoq = vim.deepcopy(client.config.init_options),
+    buffers = {},
+    debounce_timer = assert(vim.loop.new_timer(), 'Could not create timer'),
+    highlight_ns = vim.api.nvim_create_namespace('vscoq-progress-' .. client.id),
+    ag = vim.api.nvim_create_augroup("vscoq-" .. client.id, { clear = true })
+  }
   return setmetatable(new, self)
 end
 
 ---change config and send notification
 ---@param new_config vscoq.Config
 function VSCoqNvim:update_config(new_config)
-  self.config = vim.tbl_deep_extend("force", self.config, new_config)
-  self.lc.notify('workspace/didChangeConfiguration', { settings = self.config })
+  self.vscoq = vim.tbl_deep_extend("force", self.vscoq, new_config)
+  self.lc.notify('workspace/didChangeConfiguration', { settings = self.vscoq })
 end
 
 ---@type lsp-handler
@@ -177,16 +178,17 @@ local function updateHighlights_notification_handler(_, result, _, _)
   local bufnr = vim.uri_to_bufnr(params.uri)
   vim.api.nvim_buf_clear_namespace(bufnr, the_client.highlight_ns, 0, -1)
   -- TODO: ranges are not disjoint? processingRange is always the entire buffer????
-  for _, range in ipairs(params.parsedRange) do
-    vim.highlight.range(
-      bufnr,
-      the_client.highlight_ns,
-      'CoqtailSent',
-      position_lsp_to_api(bufnr, range['start'], the_client.lc.offset_encoding),
-      position_lsp_to_api(bufnr, range['end'], the_client.lc.offset_encoding),
-      { priority = vim.highlight.priorities.user }
-    )
-  end
+  -- for _, range in ipairs(params.parsedRange) do
+  -- for _, range in ipairs(params.processingRange) do
+  --   vim.highlight.range(
+  --     bufnr,
+  --     the_client.highlight_ns,
+  --     'CoqtailSent',
+  --     position_lsp_to_api(bufnr, range['start'], the_client.lc.offset_encoding),
+  --     position_lsp_to_api(bufnr, range['end'], the_client.lc.offset_encoding),
+  --     { priority = vim.highlight.priorities.user }
+  --   )
+  -- end
   for _, range in ipairs(params.processedRange) do
     vim.highlight.range(
       bufnr,
@@ -205,13 +207,12 @@ local function moveCursor_notification_handler(_, result, _, _)
   assert(the_client)
   local bufnr = vim.uri_to_bufnr(params.uri)
   local wins = vim.fn.win_findbuf(bufnr) or {}
-  if the_client.config.proof.mode == 0 and the_client.config.proof.cursor.sticky then
+  if the_client.vscoq.proof.mode == 0 and the_client.vscoq.proof.cursor.sticky then
     local position = position_api_to_mark(position_lsp_to_api(bufnr, params.range['end'], the_client.lc.offset_encoding))
     for _, win in ipairs(wins) do
       vim.api.nvim_win_set_cursor(win, position)
     end
   end
-  -- if sticky and manual, set cursor to params.range['end']
 end
 
 ---@type lsp-handler
@@ -219,6 +220,7 @@ local function searchResult_notification_handler(_, result, _, _)
   local params = result ---@type vscoq.SearchCoqResult
   vim.print('searchResult', params)
   assert(the_client)
+  -- TODO: implement SearchCoqResult
 end
 
 -- See pp.tsx.
@@ -281,7 +283,8 @@ local function render_goal(i, n, goal)
 end
 
 ---@param goals vscoq.Goal[]
-function VSCoqNvim:render_goals(goals)
+---@return string[]
+local function render_goals(goals)
   local lines = {}
   for i, goal in ipairs(goals) do
     if i > 1 then
@@ -292,8 +295,7 @@ function VSCoqNvim:render_goals(goals)
     end
     vim.list_extend(lines, render_goal(i, #goals, goal))
   end
-  -- TODO: proofView doesn't send what document it is for; file an issue
-  vim.api.nvim_buf_set_lines(self:get_info_bufnr(vim.api.nvim_get_current_buf()), 0, -1, false, lines)
+  return lines
 end
 
 ---@type lsp-handler
@@ -301,29 +303,31 @@ local function proofView_notification_handler(_, result, _, _)
   local params = result ---@type vscoq.ProofViewNotification
   assert(the_client)
   if params.proof then
-    the_client:render_goals(params.proof.goals)
+    local lines = render_goals(params.proof.goals)
+    -- TODO: proofView doesn't send what document it is for; file an issue
+    vim.api.nvim_buf_set_lines(the_client:get_info_bufnr(vim.api.nvim_get_current_buf()), 0, -1, false, lines)
   end
 end
 
 ---@param bufnr buffer
-function VSCoqNvim:create_info_panel(bufnr)
-  local info_bufnr = vim.api.nvim_create_buf(false, true)
-  vim.bo[info_bufnr].filetype = 'coq-goals'
-  self.buffers[bufnr].info_bufnr = info_bufnr
+function VSCoqNvim:create_proofview_panel(bufnr)
+  local proofview_bufnr = vim.api.nvim_create_buf(false, true)
+  vim.bo[proofview_bufnr].filetype = 'coq-goals'
+  self.buffers[bufnr].proofview_bufnr = proofview_bufnr
 end
 
 ---@param bufnr buffer
 function VSCoqNvim:get_info_bufnr(bufnr)
-  local info_bufnr = self.buffers[bufnr].info_bufnr
-  if info_bufnr and vim.api.nvim_buf_is_valid(info_bufnr) then
-    return info_bufnr
+  local proofview_bufnr = self.buffers[bufnr].proofview_bufnr
+  if proofview_bufnr and vim.api.nvim_buf_is_valid(proofview_bufnr) then
+    return proofview_bufnr
   end
-  self:create_info_panel(bufnr)
-  return self.buffers[bufnr].info_bufnr
+  self:create_proofview_panel(bufnr)
+  return self.buffers[bufnr].proofview_bufnr
 end
 
 ---@param bufnr? buffer
-function VSCoqNvim:open_info_panel(bufnr)
+function VSCoqNvim:open_proofview_panel(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   local win = vim.api.nvim_get_current_win()
   vim.cmd.sbuffer {
@@ -368,7 +372,7 @@ function VSCoqNvim:step(direction, bufnr)
 end
 
 function VSCoqNvim:on_CursorMoved()
-  if self.config.proof.mode == 1 then
+  if self.vscoq.proof.mode == 1 then
     -- TODO: debounce_timer
     assert(self:interpretToPoint())
   end
@@ -379,8 +383,8 @@ function VSCoqNvim:detach(bufnr)
   assert(self.buffers[bufnr])
   vim.api.nvim_buf_clear_namespace(bufnr, self.highlight_ns, 0, -1)
   vim.api.nvim_clear_autocmds { group = self.ag, buffer = bufnr }
-  if self.buffers[bufnr].info_bufnr then
-    vim.api.nvim_buf_delete(self.buffers[bufnr].info_bufnr, { force = true })
+  if self.buffers[bufnr].proofview_bufnr then
+    vim.api.nvim_buf_delete(self.buffers[bufnr].proofview_bufnr, { force = true })
   end
   self.buffers[bufnr] = nil
 end
@@ -389,8 +393,9 @@ end
 function VSCoqNvim:attach(bufnr)
   assert(self.buffers[bufnr] == nil)
   self.buffers[bufnr] = {}
-  self:create_info_panel(bufnr)
-  self:open_info_panel(bufnr)
+  self:create_proofview_panel(bufnr)
+  self:open_proofview_panel(bufnr)
+
   vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
     group = self.ag,
     buffer = bufnr,
@@ -402,6 +407,7 @@ function VSCoqNvim:attach(bufnr)
     desc = "Unregister deleted/detached buffer",
     callback = function(ev) self:detach(ev.buf) end,
   })
+
   vim.api.nvim_create_user_command('InterpretToPoint', function()
     self:interpretToPoint()
   end, {})
@@ -417,11 +423,20 @@ function VSCoqNvim:attach(bufnr)
   vim.api.nvim_create_user_command('ToggleManual', function()
     self:update_config {
       proof = {
-        mode = 1 - self.config.proof.mode,
+        mode = 1 - self.vscoq.proof.mode,
       },
     }
+    if self.vscoq.proof.mode == 1 then
+      self:interpretToPoint(bufnr)
+    end
   end, {})
-  self:interpretToPoint(bufnr)
+  vim.api.nvim_create_user_command('Panels', function()
+    self:open_proofview_panel()
+  end, {})
+
+  if self.vscoq.proof.mode == 1 then
+    self:interpretToPoint(bufnr)
+  end
 end
 
 function VSCoqNvim:on_exit()
@@ -470,10 +485,10 @@ local function make_on_exit(user_on_exit)
   end
 end
 
----@param opts { vscoq_nvim?: table<string,any>, lsp?: table<string,any> }
+---@param opts { vscoq?: table<string,any>, lsp?: table<string,any> }
 local function setup(opts)
   opts = opts or {}
-  opts.vscoq_nvim = vim.tbl_deep_extend('keep', opts.vscoq_nvim or {}, default_config)
+  opts.vscoq = vim.tbl_deep_extend('keep', opts.vscoq or {}, default_config)
   opts.lsp = opts.lsp or {}
   opts.lsp.handlers = vim.tbl_extend('keep', opts.lsp.handlers or {}, {
     ['vscoq/updateHighlights'] = updateHighlights_notification_handler,
@@ -487,15 +502,14 @@ local function setup(opts)
   opts.lsp.on_attach = make_on_attach(user_on_attach)
   local user_on_exit = opts.lsp.on_exit
   opts.lsp.on_exit = make_on_exit(user_on_exit)
-  assert(opts.lsp.init_options == nil)
-  opts.lsp.init_options = vim.deepcopy(opts.vscoq_nvim)
-  assert(opts.lsp.settings == nil)
+  assert(opts.lsp.init_options == nil, "[vscoq.nvim]: settings must be passed via 'vscoq' field")
+  opts.lsp.init_options = vim.deepcopy(opts.vscoq)
+  assert(opts.lsp.settings == nil, "[vscoq.nvim]: settings must be passed via 'vscoq' field")
   require('lspconfig').vscoqtop.setup(opts.lsp)
 end
 
 return {
   client = function() return the_client end,
-  panels = function() assert(the_client):open_info_panel() end,
   setup = setup,
 }
 

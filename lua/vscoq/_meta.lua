@@ -22,9 +22,21 @@
 
 ---@alias vscoq.PpTag string
 
----@alias vscoq.BlockType {[1]: "Pp_hbox"} | {[1]: "Pp_vbox", [2]: integer} | {[1]: "Pp_hvbox", [2]: integer} | {[1]: "Pp_hovbox", [2]: integer}
+---@alias vscoq.BlockType
+---| {[1]: "Pp_hbox"}
+---| {[1]: "Pp_vbox", [2]: integer}
+---| {[1]: "Pp_hvbox", [2]: integer}
+---| {[1]: "Pp_hovbox", [2]: integer}
 
----@alias vscoq.PpString {[1]: "Ppcmd_empty"} | {[1]: "Ppcmd_string", [2]: string} | {[1]: "Ppcmd_glue", [2]: vscoq.PpString[]} | {[1]: "Ppcmd_box", [2]: vscoq.BlockType, [3]: vscoq.PpString} | {[1]: "Ppcmd_tag", [2]: vscoq.PpTag, [3]: vscoq.PpString} | {[1]: "Ppcmd_print_break", [2]: integer, [3]: integer} | {[1]: "Ppcmd_force_newline"} | {[1]: "Ppcmd_comment", [2]: string[]};
+---@alias vscoq.PpString
+---| {[1]: "Ppcmd_empty"}
+---| {[1]: "Ppcmd_string", [2]: string}
+---| {[1]: "Ppcmd_glue", [2]: vscoq.PpString[]}
+---| {[1]: "Ppcmd_box", [2]: vscoq.BlockType, [3]: vscoq.PpString}
+---| {[1]: "Ppcmd_tag", [2]: vscoq.PpTag, [3]: vscoq.PpString}
+---| {[1]: "Ppcmd_print_break", [2]: integer, [3]: integer}
+---| {[1]: "Ppcmd_force_newline"}
+---| {[1]: "Ppcmd_comment", [2]: string[]};
 
 ---@class vscoq.Goal
 ---@field id integer
