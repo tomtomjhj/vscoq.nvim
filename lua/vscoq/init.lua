@@ -79,6 +79,8 @@ end
 -- }}}
 
 -- Assume that vscoq LSP client is unique.
+-- TODO: This may not be true when working on multiple workspaces.
+-- Maintain client_id ↦ VSCoqNvim map. In lsp-handlers, use ctx.client_id.
 ---@type VSCoqNvim?
 local the_client
 
@@ -140,7 +142,14 @@ local default_config = {
 ---@class VSCoqNvim
 ---@field lc lsp.Client
 ---@field vscoq vscoq.Config the current configuration
----@field buffers table<buffer, { proofview_bufnr: buffer }>
+-- TODO: Since proofView notification doesn't send which document it is for,
+-- for now we have a single proofview panel.
+-- Once fixed, make config for single/multi proofview.
+-- ---@field buffers table<buffer, { proofview_bufnr: buffer }>
+---@field buffers table<buffer, true>
+---@field proofview_panel buffer
+---@field query_panel buffer
+---@field query_id integer latest query id. Only the latest query result is displayed.
 ---@field debounce_timer uv_timer_t
 ---@field highlight_ns integer
 ---@field ag integer
@@ -148,17 +157,24 @@ local VSCoqNvim = {}
 VSCoqNvim.__index = VSCoqNvim
 
 ---@param client lsp.Client
+---@return VSCoqNvim
 function VSCoqNvim:new(client)
   ---@type VSCoqNvim
   local new = {
     lc = client,
     vscoq = vim.deepcopy(client.config.init_options),
     buffers = {},
+    proofview_panel = -1,
+    query_panel = -1,
+    query_id = 0,
     debounce_timer = assert(vim.loop.new_timer(), 'Could not create timer'),
     highlight_ns = vim.api.nvim_create_namespace('vscoq-progress-' .. client.id),
     ag = vim.api.nvim_create_augroup("vscoq-" .. client.id, { clear = true })
   }
-  return setmetatable(new, self)
+  setmetatable(new, self)
+  new:ensure_proofview_panel()
+  new:ensure_query_panel()
+  return new
 end
 
 ---change config and send notification
@@ -211,14 +227,6 @@ local function moveCursor_notification_handler(_, result, _, _)
       vim.api.nvim_win_set_cursor(win, position)
     end
   end
-end
-
----@type lsp-handler
-local function searchResult_notification_handler(_, result, _, _)
-  local params = result ---@type vscoq.SearchCoqResult
-  vim.print('searchResult', params)
-  assert(the_client)
-  -- TODO: implement SearchCoqResult
 end
 
 -- See pp.tsx.
@@ -302,39 +310,58 @@ local function proofView_notification_handler(_, result, _, _)
   assert(the_client)
   if params.proof then
     local lines = render_goals(params.proof.goals)
-    -- TODO: proofView doesn't send what document it is for; file an issue
-    vim.api.nvim_buf_set_lines(the_client:get_info_bufnr(vim.api.nvim_get_current_buf()), 0, -1, false, lines)
+    -- params.proof.shelvedGoals, params.proof.givenUpGoals
+    the_client:ensure_proofview_panel()
+    vim.api.nvim_buf_set_lines(the_client.proofview_panel, 0, -1, false, lines)
   end
 end
 
----@param bufnr buffer
-function VSCoqNvim:create_proofview_panel(bufnr)
-  local proofview_bufnr = vim.api.nvim_create_buf(false, true)
-  vim.bo[proofview_bufnr].filetype = 'coq-goals'
-  self.buffers[bufnr].proofview_bufnr = proofview_bufnr
-end
-
----@param bufnr buffer
-function VSCoqNvim:get_info_bufnr(bufnr)
-  local proofview_bufnr = self.buffers[bufnr].proofview_bufnr
-  if proofview_bufnr and vim.api.nvim_buf_is_valid(proofview_bufnr) then
-    return proofview_bufnr
+-- TODO: commands in panels
+function VSCoqNvim:ensure_proofview_panel()
+  if vim.api.nvim_buf_is_valid(self.proofview_panel) then
+    if not vim.api.nvim_buf_is_loaded(self.proofview_panel) then
+      vim.fn.bufload(self.proofview_panel)
+    end
+    return
   end
-  self:create_proofview_panel(bufnr)
-  return self.buffers[bufnr].proofview_bufnr
+  self.proofview_panel = vim.api.nvim_create_buf(false, true)
+  vim.bo[self.proofview_panel].filetype = 'coq-goals'
 end
 
----@param bufnr? buffer
-function VSCoqNvim:open_proofview_panel(bufnr)
-  bufnr = bufnr or vim.api.nvim_get_current_buf()
+function VSCoqNvim:ensure_query_panel()
+  if vim.api.nvim_buf_is_valid(self.query_panel) then
+    if not vim.api.nvim_buf_is_loaded(self.query_panel) then
+      vim.fn.bufload(self.query_panel)
+    end
+    return
+  end
+  self.query_panel = vim.api.nvim_create_buf(false, true)
+  vim.bo[self.query_panel].filetype = 'coq-infos'
+end
+
+function VSCoqNvim:open_panels()
+  self:ensure_proofview_panel()
+  self:ensure_query_panel()
   local win = vim.api.nvim_get_current_win()
-  vim.cmd.sbuffer {
-    args = { self:get_info_bufnr(bufnr) },
-    -- TODO: customization
-    -- See `:h nvim_parse_cmd`. Note that the "split size" is `range`.
-    mods = { keepjumps = true, keepalt = true, vertical = true, split = 'belowright' },
-  }
-  vim.cmd.clearjumps()
+
+  if vim.fn.bufwinid(self.proofview_panel) == -1 then
+    vim.cmd.sbuffer {
+      args = { self.proofview_panel },
+      -- See `:h nvim_parse_cmd`. Note that the "split size" is `range`.
+      mods = { keepjumps = true, keepalt = true, vertical = true, split = 'belowright' },
+    }
+    vim.cmd.clearjumps()
+  end
+
+  if vim.fn.bufwinid(self.query_panel) == -1 then
+    vim.api.nvim_set_current_win(vim.fn.bufwinid(self.proofview_panel))
+    vim.cmd.sbuffer {
+      args = { self.query_panel },
+      mods = { keepjumps = true, keepalt = true, split = 'belowright' },
+    }
+    vim.cmd.clearjumps()
+  end
+
   vim.api.nvim_set_current_win(win)
 end
 
@@ -368,6 +395,61 @@ function VSCoqNvim:step(direction, bufnr)
   return self.lc.notify(method, params)
 end
 
+---@param pattern string
+---@param bufnr? buffer
+---@param position? MarkPosition
+function VSCoqNvim:search(pattern, bufnr, position)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  position = position or guess_position(bufnr)
+  self.query_id = self.query_id + 1
+  ---@type vscoq.SearchCoqRequest
+  local params = {
+    id = tostring(self.query_id),
+    textDocument = make_versioned_text_document_params(bufnr),
+    position = make_position_params(bufnr, position, self.lc.offset_encoding),
+    pattern = pattern,
+  }
+  request_async(self.lc, bufnr, 'vscoq/search', params, function(err, result, context, config)
+    if err then
+      print("[vscoq.nvim] search error:", params.id, vim.inspect(err))
+    else
+      self:ensure_query_panel()
+      -- :h undo-break
+      vim.bo[self.query_panel].undolevels = vim.bo[self.query_panel].undolevels
+      vim.api.nvim_buf_set_lines(self.query_panel, 0, -1, false, {})
+    end
+  end)
+end
+
+---@param result vscoq.SearchCoqResult
+---@return string[]
+local function render_searchCoqResult(result)
+  local lines = {}
+  vim.list_extend(lines, vim.split(render_PpString(result.name), '\n'))
+  lines[#lines] = lines[#lines] .. ':'
+  -- NOTE: the result from server doesn't have linebreaks
+  local statement_lines = vim.split(render_PpString(result.statement), '\n')
+  for _, l in ipairs(statement_lines) do
+    lines[#lines+1] = '  ' .. l
+  end
+  lines[#lines+1] = ''
+  return lines
+end
+
+---@type lsp-handler
+local function searchResult_notification_handler(_, result, _, _)
+  local params = result ---@type vscoq.SearchCoqResult
+  assert(the_client)
+  if tonumber(params.id) < the_client.query_id then
+    return
+  end
+  -- Each notification sends a single item.
+  local lines = render_searchCoqResult(params)
+  the_client:ensure_query_panel()
+  vim.api.nvim_buf_set_lines(the_client.query_panel, -1, -1, false, lines)
+end
+
+
 function VSCoqNvim:on_CursorMoved()
   if self.vscoq.proof.mode == 1 then
     -- TODO: debounce_timer
@@ -380,10 +462,9 @@ function VSCoqNvim:detach(bufnr)
   assert(self.buffers[bufnr])
   vim.api.nvim_buf_clear_namespace(bufnr, self.highlight_ns, 0, -1)
   vim.api.nvim_clear_autocmds { group = self.ag, buffer = bufnr }
-  if self.buffers[bufnr].proofview_bufnr then
-    vim.api.nvim_buf_delete(self.buffers[bufnr].proofview_bufnr, { force = true })
-  end
-  for _, cmd in ipairs({'InterpretToPoint', 'Forward', 'Backward', 'ToEnd', 'ToggleManual', 'Panels'}) do
+  vim.api.nvim_buf_delete(self.proofview_panel, { force = true })
+  vim.api.nvim_buf_delete(self.query_panel, { force = true })
+  for _, cmd in ipairs({ 'InterpretToPoint', 'Forward', 'Backward', 'ToEnd', 'ToggleManual', 'Panels', 'Search' }) do
     vim.api.nvim_buf_del_user_command(bufnr, cmd)
   end
   self.buffers[bufnr] = nil
@@ -392,9 +473,7 @@ end
 ---@param bufnr buffer
 function VSCoqNvim:attach(bufnr)
   assert(self.buffers[bufnr] == nil)
-  self.buffers[bufnr] = {}
-  self:create_proofview_panel(bufnr)
-  self:open_proofview_panel(bufnr)
+  self.buffers[bufnr] = true
 
   vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
     group = self.ag,
@@ -431,8 +510,11 @@ function VSCoqNvim:attach(bufnr)
     end
   end, { bang = true })
   vim.api.nvim_buf_create_user_command(bufnr, 'Panels', function()
-    self:open_proofview_panel()
+    self:open_panels()
   end, { bang = true })
+  vim.api.nvim_buf_create_user_command(bufnr, 'Search', function(opts)
+    self:search(opts.args)
+  end, { bang = true, nargs = 1 })
 
   if self.vscoq.proof.mode == 1 then
     self:interpretToPoint(bufnr)
@@ -451,6 +533,7 @@ end
 local function make_on_init(user_on_init)
   return function(client, initialize_result)
     the_client = VSCoqNvim:new(client)
+    the_client:open_panels()
     if user_on_init then
       user_on_init(client, initialize_result)
     end

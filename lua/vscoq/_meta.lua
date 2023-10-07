@@ -69,9 +69,17 @@
 
 ---"vscoq/search" request parameter.
 ---@class vscoq.SearchCoqRequest
+---@field id string this doesn't need to be an actual UUID
+---@field textDocument lsp.VersionedTextDocumentIdentifier
+---@field pattern string
+---@field position lsp.Position
 
 ---"vscoq/search" response parameter.
 ---@class vscoq.SearchCoqHandshake
+---@field id string
 
 ---"vscoq/searchResult" notification parameter.
 ---@class vscoq.SearchCoqResult
+---@field id string
+---@field name vscoq.PpString
+---@field statement vscoq.PpString
