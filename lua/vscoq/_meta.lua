@@ -4,7 +4,6 @@
 ---Position for "mark-like" indexing (1-based line, 0-based column) (:h api-indexing).
 ---@class MarkPosition: { [1]: integer, [2]: integer }
 
-
 -- https://github.com/coq-community/vscoq/blob/main/docs/protocol.md
 
 -- # Configuration
@@ -52,7 +51,6 @@
 
 ---@alias vscoq.CoqMessage {[1]: vscoq.MessageSeverity, [2]: vscoq.PpString}
 
-
 ---"vscoq/proofView" notification (server → client) parameter.
 ---@class vscoq.ProofViewNotification
 ---@field proof? vscoq.ProofViewGoals
@@ -63,7 +61,6 @@
 ---@class vscoq.MoveCursorNotification
 ---@field uri lsp.DocumentUri
 ---@field range lsp.Range
-
 
 -- # Query panel
 
