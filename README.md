@@ -32,7 +32,9 @@ lua require'vscoq'.setup()
         * `:Forward`
         * `:Backward`
         * `:ToEnd`
-    * `:Panels`: Open auxiliary panels for the current buffer.
+    * `:Panels`: Open the proofview panel and query panel.
+    * Queries
+        * `:Search {pattern}`
 * [Commands from nvim-lspconfig](https://github.com/neovim/nvim-lspconfig#commands)
   work as expected.
   For example, run `:LspRestart` to restart `vscoqtop`.
@@ -66,6 +68,5 @@ Do not call `lspconfig.vscoqtop.setup()` yourself.
 `require'vscoq'.setup` does it for you.
 
 ## Features not implmented yet
-* Queries
-* Messages
-* Well-organized goal panel
+* Other queries
+* Nice proofview panel
