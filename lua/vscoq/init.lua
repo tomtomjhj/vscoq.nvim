@@ -238,9 +238,13 @@ local function render_PpString(pp, mode)
   if pp[1] == "Ppcmd_empty" then
     return ''
   elseif pp[1] == "Ppcmd_string" then
-    return pp[2]
+    return pp[2] --[[@as string]]
   elseif pp[1] == "Ppcmd_glue" then
-    return table.concat(vim.tbl_map(render_PpString, pp[2]), '')
+    return table.concat(
+      vim.tbl_map(
+        function(p) return render_PpString(p, mode) end,
+        pp[2] --[=[@as vscoq.PpString[]]=]),
+      '')
   elseif pp[1] == "Ppcmd_box" then
     if pp[2][1] == "Pp_hbox" then
       mode = "horizontal"
@@ -252,13 +256,13 @@ local function render_PpString(pp, mode)
     elseif pp[2][1] == "Pp_hovbox" then
       mode = "horizontal"
     end
-    return render_PpString(pp[3], mode)
+    return render_PpString(pp[3] --[[@as vscoq.PpString]], mode)
   elseif pp[1] == "Ppcmd_tag" then
     -- TODO: use PpTag for highlighting (difficult)
-    return render_PpString(pp[3])
+    return render_PpString(pp[3] --[[@as vscoq.PpString]], mode)
   elseif pp[1] == "Ppcmd_print_break" then
     if mode == "horizontal" then
-      return string.rep(" ", pp[2])
+      return string.rep(" ", pp[2] --[[@as integer]])
     elseif mode == "vertical" then
       return "\n"
     end
@@ -304,13 +308,56 @@ local function render_goals(goals)
   return lines
 end
 
+---@param messages vscoq.CoqMessage[]
+---@return string[]
+local function render_CoqMessages(messages)
+  local lines = {}
+  for _, message in ipairs(messages) do
+    lines[#lines+1] = ({ "Error", "Warning", "Information" })[message[1]] .. ':'
+    vim.list_extend(lines, vim.split(render_PpString(message[2]), '\n'))
+  end
+  return lines
+end
+
+---@param proofView vscoq.ProofViewNotification
+---@return string[]
+local function render_ProofView(proofView)
+  local lines = {}
+  if proofView.proof then
+    vim.list_extend(lines, render_goals(proofView.proof.goals))
+  end
+  if #proofView.messages > 0 then
+    lines[#lines+1] = ''
+    lines[#lines+1] = ''
+    lines[#lines+1] = 'Messages ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+    lines[#lines+1] = ''
+    vim.list_extend(lines, render_CoqMessages(proofView.messages))
+  end
+  if proofView.proof then
+    if #proofView.proof.shelvedGoals > 0 then
+      lines[#lines+1] = ''
+      lines[#lines+1] = ''
+      lines[#lines+1] = 'Shelved ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      lines[#lines+1] = ''
+      vim.list_extend(lines, render_goals(proofView.proof.shelvedGoals))
+    end
+    if #proofView.proof.givenUpGoals > 0 then
+      lines[#lines+1] = ''
+      lines[#lines+1] = ''
+      lines[#lines+1] = 'Given Up ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      lines[#lines+1] = ''
+      vim.list_extend(lines, render_goals(proofView.proof.givenUpGoals))
+    end
+  end
+  return lines
+end
+
 ---@type lsp-handler
 local function proofView_notification_handler(_, result, _, _)
   local params = result ---@type vscoq.ProofViewNotification
   assert(the_client)
   if params.proof then
-    local lines = render_goals(params.proof.goals)
-    -- params.proof.shelvedGoals, params.proof.givenUpGoals
+    local lines = render_ProofView(params)
     the_client:ensure_proofview_panel()
     vim.api.nvim_buf_set_lines(the_client.proofview_panel, 0, -1, false, lines)
   end
@@ -354,7 +401,7 @@ function VSCoqNvim:open_panels()
   end
 
   if vim.fn.bufwinid(self.query_panel) == -1 then
-    vim.api.nvim_set_current_win(vim.fn.bufwinid(self.proofview_panel))
+    vim.api.nvim_set_current_win(assert(vim.fn.bufwinid(self.proofview_panel)))
     vim.cmd.sbuffer {
       args = { self.query_panel },
       mods = { keepjumps = true, keepalt = true, split = 'belowright' },
@@ -409,7 +456,7 @@ function VSCoqNvim:search(pattern, bufnr, position)
     position = make_position_params(bufnr, position, self.lc.offset_encoding),
     pattern = pattern,
   }
-  request_async(self.lc, bufnr, 'vscoq/search', params, function(err, result, context, config)
+  request_async(self.lc, bufnr, 'vscoq/search', params, function(err)
     if err then
       print("[vscoq.nvim] search error:", params.id, vim.inspect(err))
     else
