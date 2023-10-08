@@ -77,7 +77,6 @@ function VSCoqNvim:updateHighlights(highlights)
   end
 end
 
----@type lsp-handler
 ---@param target vscoq.MoveCursorNotification
 function VSCoqNvim:moveCursor(target)
   local bufnr = vim.uri_to_bufnr(target.uri)

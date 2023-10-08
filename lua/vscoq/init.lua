@@ -1,3 +1,5 @@
+local M = {}
+
 -- Some options values are used both in the server and the client, e.g.,
 -- vscoq.proof.mode is used in "check_mode" variable in server, and "goalsHook" in client.
 --
@@ -11,7 +13,7 @@
 --
 -- The "Coq configuration" (vscoq.trace.server, ...) are low-level client-only config handled by vim.lsp.start_client().
 ---@class vscoq.Config
-local default_config = {
+M.default_config = {
   goals = {
     -- used for initAppSettings
     ---@type "Tabs"|"List"
@@ -53,11 +55,8 @@ local default_config = {
   },
 }
 
--- Assume that vscoq LSP client is unique.
--- TODO: This may not be true when working on multiple workspaces.
--- Maintain client_id ↦ VSCoqNvim map. In lsp-handlers, use ctx.client_id.
----@type VSCoqNvim?
-local the_client
+---@type table<integer, VSCoqNvim> map from client id
+M.clients = {}
 
 local function make_on_init(user_on_init)
   return function(client, initialize_result)
@@ -66,8 +65,8 @@ local function make_on_init(user_on_init)
       vim.print('[vscoq.nvim] on_init failed', VSCoqNvim)
       return
     end
-    the_client = VSCoqNvim:new(client)
-    the_client:open_panels()
+    M.clients[client.id] = VSCoqNvim:new(client)
+    M.clients[client.id]:open_panels()
     if user_on_init then
       user_on_init(client, initialize_result)
     end
@@ -78,10 +77,8 @@ end
 ---@return fun(client: lsp.Client, bufnr: buffer)
 local function make_on_attach(user_on_attach)
   return function(client, bufnr)
-    assert(the_client)
-    assert(the_client.lc == client)
-    if not the_client.buffers[bufnr] then
-      the_client:attach(bufnr)
+    if not M.clients[client.id].buffers[bufnr] then
+      M.clients[client.id]:attach(bufnr)
     end
     if user_on_attach then
       user_on_attach(client, bufnr)
@@ -96,40 +93,36 @@ local function make_on_exit(user_on_exit)
     end
     -- NOTE: on_exit runs in_fast_event
     vim.schedule(function()
-      assert(the_client):on_exit()
-      the_client = nil
+      M.clients[client_id]:on_exit()
+      M.clients[client_id] = nil
     end)
   end
 end
 
 ---@type lsp-handler
-local function updateHighlights_notification_handler(_, result, _, _)
-  assert(the_client)
-  the_client:updateHighlights(result)
+local function updateHighlights_notification_handler(_, result, ctx, _)
+  M.clients[ctx.client_id]:updateHighlights(result)
 end
 
 ---@type lsp-handler
-local function moveCursor_notification_handler(_, result, _, _)
-  assert(the_client)
-  the_client:moveCursor(result)
+local function moveCursor_notification_handler(_, result, ctx, _)
+  M.clients[ctx.client_id]:moveCursor(result)
 end
 
 ---@type lsp-handler
-local function searchResult_notification_handler(_, result, _, _)
-  assert(the_client)
-  the_client:searchResult(result)
+local function searchResult_notification_handler(_, result, ctx, _)
+  M.clients[ctx.client_id]:searchResult(result)
 end
 
 ---@type lsp-handler
-local function proofView_notification_handler(_, result, _, _)
-  assert(the_client)
-  the_client:proofView(result)
+local function proofView_notification_handler(_, result, ctx, _)
+  M.clients[ctx.client_id]:proofView(result)
 end
 
 ---@param opts { vscoq?: table<string,any>, lsp?: table<string,any> }
-local function setup(opts)
+function M.setup(opts)
   opts = opts or {}
-  opts.vscoq = vim.tbl_deep_extend('keep', opts.vscoq or {}, default_config)
+  opts.vscoq = vim.tbl_deep_extend('keep', opts.vscoq or {}, M.default_config)
   opts.lsp = opts.lsp or {}
   opts.lsp.handlers = vim.tbl_extend('keep', opts.lsp.handlers or {}, {
     ['vscoq/updateHighlights'] = updateHighlights_notification_handler,
@@ -151,9 +144,4 @@ local function setup(opts)
   require('lspconfig').vscoqtop.setup(opts.lsp)
 end
 
-return {
-  client = function()
-    return the_client
-  end,
-  setup = setup,
-}
+return M
