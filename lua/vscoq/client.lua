@@ -369,8 +369,6 @@ function VSCoqNvim:detach(bufnr)
   assert(self.buffers[bufnr])
   vim.api.nvim_buf_clear_namespace(bufnr, self.highlight_ns, 0, -1)
   vim.api.nvim_clear_autocmds { group = self.ag, buffer = bufnr }
-  vim.api.nvim_buf_delete(self.proofview_panel, { force = true })
-  vim.api.nvim_buf_delete(self.query_panel, { force = true })
   for _, cmd in ipairs {
     'InterpretToPoint',
     'Forward',
@@ -446,6 +444,8 @@ function VSCoqNvim:on_exit()
   for bufnr, _ in pairs(self.buffers) do
     self:detach(bufnr)
   end
+  vim.api.nvim_buf_delete(self.proofview_panel, { force = true })
+  vim.api.nvim_buf_delete(self.query_panel, { force = true })
   vim.api.nvim_clear_autocmds { group = self.ag }
 end
 
