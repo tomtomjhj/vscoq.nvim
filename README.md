@@ -70,3 +70,7 @@ Do not call `lspconfig.vscoqtop.setup()` yourself.
 ## Features not implmented yet
 * Other queries
 * Nice proofview panel
+
+## See also
+* [coq.ctags](https://github.com/tomtomjhj/coq.ctags) for go-to-definition.
+* [coq-lsp.nvim](https://github.com/tomtomjhj/coq-lsp.nvim) for `coq-lsp` client.
