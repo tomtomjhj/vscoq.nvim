@@ -49,22 +49,11 @@ function VSCoqNvim:update_config(new_config)
 end
 
 ---vscoq.MoveCursorNotification
----@param highlights vscoq.Highlights
+---@param highlights vscoq.UpdateHighlightsNotification
 function VSCoqNvim:updateHighlights(highlights)
   local bufnr = vim.uri_to_bufnr(highlights.uri)
   vim.api.nvim_buf_clear_namespace(bufnr, self.highlight_ns, 0, -1)
-  -- TODO: ranges are not disjoint? processingRange is always the entire buffer????
   -- for _, range in ipairs(highlights.parsedRange) do
-  -- for _, range in ipairs(highlights.processingRange) do
-  --   vim.highlight.range(
-  --     bufnr,
-  --     self.highlight_ns,
-  --     'CoqtailSent',
-  --     position_lsp_to_api(bufnr, range['start'], self.lc.offset_encoding),
-  --     position_lsp_to_api(bufnr, range['end'], self.lc.offset_encoding),
-  --     { priority = vim.highlight.priorities.user }
-  --   )
-  -- end
   for _, range in ipairs(highlights.processedRange) do
     vim.highlight.range(
       bufnr,
@@ -321,13 +310,19 @@ function VSCoqNvim:search(pattern, bufnr, position)
   }
   util.request_async(self.lc, bufnr, 'vscoq/search', params, function(err)
     if err then
-      print('[vscoq.nvim] search error:', params.id, vim.inspect(err))
-    else
-      self:ensure_query_panel()
-      -- :h undo-break
-      vim.bo[self.query_panel].undolevels = vim.bo[self.query_panel].undolevels
-      vim.api.nvim_buf_set_lines(self.query_panel, 0, -1, false, {})
+      vim.notify(
+        ('[vscoq.nvim] vscoq/search error:\nparam:\n%s\nerror:%s\n'):format(
+          vim.inspect(params),
+          vim.inspect(err)
+        ),
+        vim.log.levels.ERROR
+      )
+      return
     end
+    self:ensure_query_panel()
+    -- :h undo-break
+    vim.bo[self.query_panel].undolevels = vim.bo[self.query_panel].undolevels
+    vim.api.nvim_buf_set_lines(self.query_panel, 0, -1, false, {})
   end)
 end
 
@@ -357,6 +352,47 @@ function VSCoqNvim:searchResult(result)
   vim.api.nvim_buf_set_lines(self.query_panel, -1, -1, false, lines)
 end
 
+---@param query "vscoq/about"|"vscoq/check"|"vscoq/print"|"vscoq/locate"
+---@param pattern string
+---@param bufnr? buffer
+---@param position? MarkPosition
+function VSCoqNvim:simple_query(query, pattern, bufnr, position)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  position = position or util.guess_position(bufnr)
+  self.query_id = self.query_id + 1
+  ---@type vscoq.SimpleCoqRequest
+  local params = {
+    textDocument = util.make_versioned_text_document_params(bufnr),
+    position = util.make_position_params(bufnr, position, self.lc.offset_encoding),
+    pattern = pattern,
+  }
+  util.request_async(
+    self.lc,
+    bufnr,
+    query,
+    params,
+    ---@param result vscoq.PpString
+    function(err, result)
+      if err then
+        vim.notify(
+          ('[vscoq.nvim] %s error:\nparam:\n%s\nerror:%s\n'):format(
+            query,
+            vim.inspect(params),
+            vim.inspect(err)
+          ),
+          vim.log.levels.ERROR
+        )
+      end
+      self:ensure_query_panel()
+      local lines = {}
+      vim.list_extend(lines, vim.split(render_PpString(result), '\n'))
+      -- :h undo-break
+      vim.bo[self.query_panel].undolevels = vim.bo[self.query_panel].undolevels
+      vim.api.nvim_buf_set_lines(self.query_panel, 0, -1, false, lines)
+    end
+  )
+end
+
 function VSCoqNvim:on_CursorMoved()
   if self.vscoq.proof.mode == 1 then
     -- TODO: debounce_timer
@@ -377,6 +413,10 @@ function VSCoqNvim:detach(bufnr)
     'ToggleManual',
     'Panels',
     'Search',
+    'About',
+    'Check',
+    'Print',
+    'Locate',
   } do
     vim.api.nvim_buf_del_user_command(bufnr, cmd)
   end
@@ -431,6 +471,18 @@ function VSCoqNvim:attach(bufnr)
   end, { bang = true })
   vim.api.nvim_buf_create_user_command(bufnr, 'Search', function(opts)
     self:search(opts.args)
+  end, { bang = true, nargs = 1 })
+  print(vim.api.nvim_buf_create_user_command(bufnr, 'About', function(opts)
+    self:simple_query('vscoq/about', opts.args)
+  end, { bang = true, nargs = 1 }))
+  vim.api.nvim_buf_create_user_command(bufnr, 'Check', function(opts)
+    self:simple_query('vscoq/check', opts.args)
+  end, { bang = true, nargs = 1 })
+  vim.api.nvim_buf_create_user_command(bufnr, 'Print', function(opts)
+    self:simple_query('vscoq/print', opts.args)
+  end, { bang = true, nargs = 1 })
+  vim.api.nvim_buf_create_user_command(bufnr, 'Locate', function(opts)
+    self:simple_query('vscoq/locate', opts.args)
   end, { bang = true, nargs = 1 })
 
   if self.vscoq.proof.mode == 1 then

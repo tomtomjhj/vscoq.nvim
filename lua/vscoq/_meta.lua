@@ -11,10 +11,9 @@
 -- # Highlights
 
 ---"vscoq/UpdateHighlights" notification (server → client) parameter.
----@class vscoq.Highlights
+---@class vscoq.UpdateHighlightsNotification
 ---@field uri lsp.DocumentUri
 ---@field parsedRange lsp.Range[]
----@field processingRange lsp.Range[]
 ---@field processedRange lsp.Range[]
 
 -- # Goal view
@@ -80,3 +79,14 @@
 ---@field id string
 ---@field name vscoq.PpString
 ---@field statement vscoq.PpString
+
+---Request parameter for "vscoq/about", "vscoq/check", "vscoq/print", "vscoq/locate"
+---@class vscoq.SimpleCoqRequest
+---@field textDocument lsp.VersionedTextDocumentIdentifier
+---@field pattern string
+---@field position lsp.Position
+
+---Response parameter for "vscoq/about", "vscoq/check", "vscoq/print", "vscoq/locate"
+---@alias vscoq.SimpleCoqReponse vscoq.PpString
+
+-- TODO: "vscoq/resetCoq"
