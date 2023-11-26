@@ -25,16 +25,20 @@ lua require'vscoq'.setup()
 * vscoq.nvim uses Neovim's built-in LSP client and nvim-lspconfig.
   See [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim/)
   for basic example configurations for working with LSP.
-* Ex commands
-    * `:ToggleManual`: Toggle proof mode between "Continuous" (default, show goals for the cursor position) and "Manual" modes.
-    * manual mode:
-        * `:InterpretToPoint`
-        * `:Forward`
-        * `:Backward`
-        * `:ToEnd`
-    * `:Panels`: Open the proofview panel and query panel.
+* `:VsCoq` command
+    * `:VsCoq continuous`: Use the "Continuous" proof mode (default, show goals for the cursor position).
+    * `:VsCoq manual`: Use the "Manual" proof mode, where the following four commands are used for navigation.
+        * `:VsCoq stepForward`
+        * `:VsCoq stepBackward`
+        * `:VsCoq interpretToEnd`
+        * `:VsCoq interpretToPoint`
+    * `:VsCoq panels`: Open the proofview panel and query panel.
     * Queries
-        * `:Search {pattern}`
+        * `:VsCoq search {pattern}`
+        * `:VsCoq about {pattern}`
+        * `:VsCoq check {pattern}`
+        * `:VsCoq print {pattern}`
+        * `:VsCoq locate {pattern}`
 * [Commands from nvim-lspconfig](https://github.com/neovim/nvim-lspconfig#commands)
   work as expected.
   For example, run `:LspRestart` to restart `vscoqtop`.
@@ -45,6 +49,7 @@ lua require'vscoq'.setup()
 require'vscoq'.setup {
   -- Configuration for vscoq, used in both the client and the server.
   -- See "configuration" in https://github.com/coq-community/vscoq/blob/main/client/package.json.
+  -- "vscoq.path", "vscoq.args", and "vscoq.trace.server" should be configured in the "lsp" table below.
   -- The following is an example.
   vscoq = {
     proof = {
@@ -58,7 +63,7 @@ require'vscoq'.setup {
     on_attach = function(client, bufnr)
       -- your mappings, etc
     end,
-    autostart = false, -- use this if you want to manually launch vscoqtop with :LspStart.
+    autostart = false, -- use this if you want to manually `:LspStart vscoqtop`.
   },
 }
 ```
@@ -67,9 +72,10 @@ NOTE:
 Do not call `lspconfig.vscoqtop.setup()` yourself.
 `require'vscoq'.setup` does it for you.
 
-## Features not implmented yet
-* Other queries
-* Nice proofview panel
+## Features not implemented yet
+* Fancy proofview rendering
+    * proof diff highlights
+* Make lspconfig optional
 
 ## See also
 * [coq.ctags](https://github.com/tomtomjhj/coq.ctags) for go-to-definition.
