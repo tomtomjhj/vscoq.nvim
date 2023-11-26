@@ -2,6 +2,7 @@
 ---@diagnostic disable: invisible
 
 local util = require('vscoq.util')
+local render = require('vscoq.render')
 
 ---@class VSCoqNvim
 ---@field lc lsp.Client
@@ -53,7 +54,7 @@ end
 function VSCoqNvim:updateHighlights(highlights)
   local bufnr = vim.uri_to_bufnr(highlights.uri)
   vim.api.nvim_buf_clear_namespace(bufnr, self.highlight_ns, 0, -1)
-  -- for _, range in ipairs(highlights.parsedRange) do
+  -- for _, range in ipairs(highlights.processingRange) do
   for _, range in ipairs(highlights.processedRange) do
     vim.highlight.range(
       bufnr,
@@ -80,137 +81,9 @@ function VSCoqNvim:moveCursor(target)
   end
 end
 
--- See pp.tsx.
----@param pp vscoq.PpString
----@param mode? "horizontal"|"vertical"
----@return string
-local function render_PpString(pp, mode)
-  mode = mode or 'horizontal'
-  if pp[1] == 'Ppcmd_empty' then
-    return ''
-  elseif pp[1] == 'Ppcmd_string' then
-    return pp[2] --[[@as string]]
-  elseif pp[1] == 'Ppcmd_glue' then
-    return table.concat(
-      vim.tbl_map(function(p)
-        return render_PpString(p, mode)
-      end, pp[2] --[=[@as vscoq.PpString[]]=]),
-      ''
-    )
-  elseif pp[1] == 'Ppcmd_box' then
-    if pp[2][1] == 'Pp_hbox' then
-      mode = 'horizontal'
-    elseif pp[2][1] == 'Pp_vbox' then
-      mode = 'vertical'
-    -- TODO: proper support for hvbox and hovbox (not implemented in vscode client either)
-    elseif pp[2][1] == 'Pp_hvbox' then
-      mode = 'horizontal'
-    elseif pp[2][1] == 'Pp_hovbox' then
-      mode = 'horizontal'
-    end
-    return render_PpString(pp[3] --[[@as vscoq.PpString]], mode)
-  elseif pp[1] == 'Ppcmd_tag' then
-    -- TODO: use PpTag for highlighting (difficult)
-    return render_PpString(pp[3] --[[@as vscoq.PpString]], mode)
-  elseif pp[1] == 'Ppcmd_print_break' then
-    if mode == 'horizontal' then
-      return string.rep(' ', pp[2] --[[@as integer]])
-    elseif mode == 'vertical' then
-      return '\n'
-    end
-    error()
-  elseif pp[1] == 'Ppcmd_force_newline' then
-    return '\n'
-  elseif pp[1] == 'Ppcmd_comment' then
-    return vim.inspect(pp[2])
-  end
-  error(pp[1])
-end
-
----@param goal vscoq.Goal
----@param i integer
----@param n integer
----@return string[]
-local function render_goal(i, n, goal)
-  local lines = {}
-  lines[#lines + 1] = string.format('Goal %d (%d / %d)', goal.id, i, n)
-  for _, hyp in ipairs(goal.hypotheses) do
-    vim.list_extend(lines, vim.split(render_PpString(hyp), '\n'))
-  end
-  lines[#lines + 1] = ''
-  lines[#lines + 1] = '========================================'
-  lines[#lines + 1] = ''
-  vim.list_extend(lines, vim.split(render_PpString(goal.goal), '\n'))
-  return lines
-end
-
----@param goals vscoq.Goal[]
----@return string[]
-local function render_goals(goals)
-  local lines = {}
-  for i, goal in ipairs(goals) do
-    if i > 1 then
-      lines[#lines + 1] = ''
-      lines[#lines + 1] = ''
-      lines[#lines + 1] =
-        '────────────────────────────────────────────────────────────'
-      lines[#lines + 1] = ''
-    end
-    vim.list_extend(lines, render_goal(i, #goals, goal))
-  end
-  return lines
-end
-
----@param messages vscoq.CoqMessage[]
----@return string[]
-local function render_CoqMessages(messages)
-  local lines = {}
-  for _, message in ipairs(messages) do
-    lines[#lines + 1] = ({ 'Error', 'Warning', 'Information' })[message[1]] .. ':'
-    vim.list_extend(lines, vim.split(render_PpString(message[2]), '\n'))
-  end
-  return lines
-end
-
----@param proofView vscoq.ProofViewNotification
----@return string[]
-local function render_ProofView(proofView)
-  local lines = {}
-  if proofView.proof then
-    vim.list_extend(lines, render_goals(proofView.proof.goals))
-  end
-  if #proofView.messages > 0 then
-    lines[#lines + 1] = ''
-    lines[#lines + 1] = ''
-    lines[#lines + 1] =
-      'Messages ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-    lines[#lines + 1] = ''
-    vim.list_extend(lines, render_CoqMessages(proofView.messages))
-  end
-  if proofView.proof then
-    if #proofView.proof.shelvedGoals > 0 then
-      lines[#lines + 1] = ''
-      lines[#lines + 1] = ''
-      lines[#lines + 1] =
-        'Shelved ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-      lines[#lines + 1] = ''
-      vim.list_extend(lines, render_goals(proofView.proof.shelvedGoals))
-    end
-    if #proofView.proof.givenUpGoals > 0 then
-      lines[#lines + 1] = ''
-      lines[#lines + 1] = ''
-      lines[#lines + 1] =
-        'Given Up ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-      lines[#lines + 1] = ''
-      vim.list_extend(lines, render_goals(proofView.proof.givenUpGoals))
-    end
-  end
-  return lines
-end
-
 ---@param proofView vscoq.ProofViewNotification
 function VSCoqNvim:proofView(proofView)
-  local lines = render_ProofView(proofView)
+  local lines = render.ProofView(proofView)
   self:ensure_proofview_panel()
   vim.api.nvim_buf_set_lines(self.proofview_panel, 0, -1, false, lines)
 end
@@ -327,27 +200,12 @@ function VSCoqNvim:search(pattern, bufnr, position)
 end
 
 ---@param result vscoq.SearchCoqResult
----@return string[]
-local function render_searchCoqResult(result)
-  local lines = {}
-  vim.list_extend(lines, vim.split(render_PpString(result.name), '\n'))
-  lines[#lines] = lines[#lines] .. ':'
-  -- NOTE: the result from server doesn't have linebreaks
-  local statement_lines = vim.split(render_PpString(result.statement), '\n')
-  for _, l in ipairs(statement_lines) do
-    lines[#lines + 1] = '  ' .. l
-  end
-  lines[#lines + 1] = ''
-  return lines
-end
-
----@param result vscoq.SearchCoqResult
 function VSCoqNvim:searchResult(result)
   if tonumber(result.id) < self.query_id then
     return
   end
   -- Each notification sends a single item.
-  local lines = render_searchCoqResult(result)
+  local lines = render.searchCoqResult(result)
   self:ensure_query_panel()
   vim.api.nvim_buf_set_lines(self.query_panel, -1, -1, false, lines)
 end
@@ -385,7 +243,7 @@ function VSCoqNvim:simple_query(query, pattern, bufnr, position)
       end
       self:ensure_query_panel()
       local lines = {}
-      vim.list_extend(lines, vim.split(render_PpString(result), '\n'))
+      vim.list_extend(lines, vim.split(render.PpString(result), '\n'))
       -- :h undo-break
       vim.bo[self.query_panel].undolevels = vim.bo[self.query_panel].undolevels
       vim.api.nvim_buf_set_lines(self.query_panel, 0, -1, false, lines)

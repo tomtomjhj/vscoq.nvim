@@ -13,7 +13,7 @@
 ---"vscoq/UpdateHighlights" notification (server → client) parameter.
 ---@class vscoq.UpdateHighlightsNotification
 ---@field uri lsp.DocumentUri
----@field parsedRange lsp.Range[]
+---@field processingRange lsp.Range[]
 ---@field processedRange lsp.Range[]
 
 -- # Goal view
@@ -62,6 +62,8 @@
 ---@field range lsp.Range
 
 -- # Query panel
+
+-- TODO: query response does not contain appropriate line breaks for window width (unlike coqide)
 
 ---"vscoq/search" request parameter.
 ---@class vscoq.SearchCoqRequest
