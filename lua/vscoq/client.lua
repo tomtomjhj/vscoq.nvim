@@ -21,6 +21,9 @@ local render = require('vscoq.render')
 local VSCoqNvim = {}
 VSCoqNvim.__index = VSCoqNvim
 
+---@type string[] command names
+local commands = {}
+
 ---@param client lsp.Client
 ---@return VSCoqNvim
 function VSCoqNvim:new(client)
@@ -49,7 +52,16 @@ function VSCoqNvim:update_config(new_config)
   self.lc.notify('workspace/didChangeConfiguration', { settings = self.vscoq })
 end
 
----vscoq.MoveCursorNotification
+function VSCoqNvim:manual()
+  self:update_config { proof = { mode = 0 } }
+end
+function VSCoqNvim:continuous()
+  self:update_config { proof = { mode = 1 } }
+  self:interpretToPoint()
+end
+commands[#commands + 1] = 'manual'
+commands[#commands + 1] = 'continuous'
+
 ---@param highlights vscoq.UpdateHighlightsNotification
 function VSCoqNvim:updateHighlights(highlights)
   local bufnr = vim.uri_to_bufnr(highlights.uri)
@@ -111,7 +123,7 @@ function VSCoqNvim:ensure_query_panel()
   vim.bo[self.query_panel].filetype = 'coq-infos'
 end
 
-function VSCoqNvim:open_panels()
+function VSCoqNvim:panels()
   self:ensure_proofview_panel()
   self:ensure_query_panel()
   local win = vim.api.nvim_get_current_win()
@@ -137,6 +149,8 @@ function VSCoqNvim:open_panels()
   vim.api.nvim_set_current_win(win)
 end
 
+commands[#commands + 1] = 'panels'
+
 ---@param bufnr? buffer
 ---@param position? MarkPosition
 function VSCoqNvim:interpretToPoint(bufnr, position)
@@ -148,24 +162,28 @@ function VSCoqNvim:interpretToPoint(bufnr, position)
   }
   return self.lc.notify('vscoq/interpretToPoint', params)
 end
+commands[#commands + 1] = 'interpretToPoint'
 
----@param direction "forward"|"backward"|"end"
+---@param method "vscoq/stepForward"|"vscoq/stepBackward"|"vscoq/interpretToEnd"
 ---@param bufnr? buffer
-function VSCoqNvim:step(direction, bufnr)
+function VSCoqNvim:step(method, bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
-  local params = {
-    textDocument = util.make_versioned_text_document_params(bufnr),
-  }
-  local method
-  if direction == 'forward' then
-    method = 'vscoq/stepForward'
-  elseif direction == 'backward' then
-    method = 'vscoq/stepBackward'
-  else -- direction == "end"
-    method = 'vscoq/interpretToEnd'
-  end
+  local params = { textDocument = util.make_versioned_text_document_params(bufnr) }
   return self.lc.notify(method, params)
 end
+
+function VSCoqNvim:stepForward()
+  return self:step('vscoq/stepForward')
+end
+function VSCoqNvim:stepBackward()
+  return self:step('vscoq/stepBackward')
+end
+function VSCoqNvim:interpretToEnd()
+  return self:step('vscoq/interpretToEnd')
+end
+commands[#commands + 1] = 'stepForward'
+commands[#commands + 1] = 'stepBackward'
+commands[#commands + 1] = 'interpretToEnd'
 
 ---@param pattern string
 ---@param bufnr? buffer
@@ -198,6 +216,7 @@ function VSCoqNvim:search(pattern, bufnr, position)
     vim.api.nvim_buf_set_lines(self.query_panel, 0, -1, false, {})
   end)
 end
+commands[#commands + 1] = 'search'
 
 ---@param result vscoq.SearchCoqResult
 function VSCoqNvim:searchResult(result)
@@ -210,11 +229,11 @@ function VSCoqNvim:searchResult(result)
   vim.api.nvim_buf_set_lines(self.query_panel, -1, -1, false, lines)
 end
 
----@param query "vscoq/about"|"vscoq/check"|"vscoq/print"|"vscoq/locate"
+---@param method "vscoq/about"|"vscoq/check"|"vscoq/print"|"vscoq/locate"
 ---@param pattern string
 ---@param bufnr? buffer
 ---@param position? MarkPosition
-function VSCoqNvim:simple_query(query, pattern, bufnr, position)
+function VSCoqNvim:simple_query(method, pattern, bufnr, position)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   position = position or util.guess_position(bufnr)
   self.query_id = self.query_id + 1
@@ -227,14 +246,14 @@ function VSCoqNvim:simple_query(query, pattern, bufnr, position)
   util.request_async(
     self.lc,
     bufnr,
-    query,
+    method,
     params,
     ---@param result vscoq.PpString
     function(err, result)
       if err then
         vim.notify(
           ('[vscoq.nvim] %s error:\nparam:\n%s\nerror:%s\n'):format(
-            query,
+            method,
             vim.inspect(params),
             vim.inspect(err)
           ),
@@ -251,6 +270,23 @@ function VSCoqNvim:simple_query(query, pattern, bufnr, position)
   )
 end
 
+function VSCoqNvim:about(pattern)
+  self:simple_query('vscoq/about', pattern)
+end
+function VSCoqNvim:check(pattern)
+  self:simple_query('vscoq/check', pattern)
+end
+function VSCoqNvim:print(pattern)
+  self:simple_query('vscoq/print', pattern)
+end
+function VSCoqNvim:locate(pattern)
+  self:simple_query('vscoq/locate', pattern)
+end
+commands[#commands + 1] = 'about'
+commands[#commands + 1] = 'check'
+commands[#commands + 1] = 'print'
+commands[#commands + 1] = 'locate'
+
 function VSCoqNvim:on_CursorMoved()
   if self.vscoq.proof.mode == 1 then
     -- TODO: debounce_timer
@@ -263,21 +299,7 @@ function VSCoqNvim:detach(bufnr)
   assert(self.buffers[bufnr])
   vim.api.nvim_buf_clear_namespace(bufnr, self.highlight_ns, 0, -1)
   vim.api.nvim_clear_autocmds { group = self.ag, buffer = bufnr }
-  for _, cmd in ipairs {
-    'InterpretToPoint',
-    'Forward',
-    'Backward',
-    'ToEnd',
-    'ToggleManual',
-    'Panels',
-    'Search',
-    'About',
-    'Check',
-    'Print',
-    'Locate',
-  } do
-    vim.api.nvim_buf_del_user_command(bufnr, cmd)
-  end
+  vim.api.nvim_buf_del_user_command(bufnr, 'VsCoq')
   self.buffers[bufnr] = nil
 end
 
@@ -302,50 +324,32 @@ function VSCoqNvim:attach(bufnr)
     end,
   })
 
-  vim.api.nvim_buf_create_user_command(bufnr, 'InterpretToPoint', function()
-    self:interpretToPoint()
-  end, { bang = true })
-  vim.api.nvim_buf_create_user_command(bufnr, 'Forward', function()
-    self:step('forward')
-  end, { bang = true })
-  vim.api.nvim_buf_create_user_command(bufnr, 'Backward', function()
-    self:step('backward')
-  end, { bang = true })
-  vim.api.nvim_buf_create_user_command(bufnr, 'ToEnd', function()
-    self:step('end')
-  end, { bang = true })
-  vim.api.nvim_buf_create_user_command(bufnr, 'ToggleManual', function()
-    self:update_config {
-      proof = {
-        mode = 1 - self.vscoq.proof.mode,
-      },
-    }
-    if self.vscoq.proof.mode == 1 then
-      self:interpretToPoint(bufnr)
-    end
-  end, { bang = true })
-  vim.api.nvim_buf_create_user_command(bufnr, 'Panels', function()
-    self:open_panels()
-  end, { bang = true })
-  vim.api.nvim_buf_create_user_command(bufnr, 'Search', function(opts)
-    self:search(opts.args)
-  end, { bang = true, nargs = 1 })
-  print(vim.api.nvim_buf_create_user_command(bufnr, 'About', function(opts)
-    self:simple_query('vscoq/about', opts.args)
-  end, { bang = true, nargs = 1 }))
-  vim.api.nvim_buf_create_user_command(bufnr, 'Check', function(opts)
-    self:simple_query('vscoq/check', opts.args)
-  end, { bang = true, nargs = 1 })
-  vim.api.nvim_buf_create_user_command(bufnr, 'Print', function(opts)
-    self:simple_query('vscoq/print', opts.args)
-  end, { bang = true, nargs = 1 })
-  vim.api.nvim_buf_create_user_command(bufnr, 'Locate', function(opts)
-    self:simple_query('vscoq/locate', opts.args)
-  end, { bang = true, nargs = 1 })
+  vim.api.nvim_buf_create_user_command(bufnr, 'VsCoq', function(opts)
+    self:command(opts.args)
+  end, {
+    bang = true,
+    nargs = 1,
+    complete = function(arglead, _, _)
+      return vim.tbl_filter(function(command)
+        return command:find(arglead) ~= nil
+      end, commands)
+    end,
+  })
 
   if self.vscoq.proof.mode == 1 then
     self:interpretToPoint(bufnr)
   end
+end
+
+---@param args string
+function VSCoqNvim:command(args)
+  local _, to, subcommand = args:find('(%w+)%s*')
+  if not vim.tbl_contains(commands, subcommand) then
+    error(('"%s" is not a valid VsCoq command'):format(subcommand))
+  end
+  args = args:sub(to + 1)
+  -- TODO: check validity of args? maybe add some spec to commands
+  VSCoqNvim[subcommand](self, #args > 0 and args or nil)
 end
 
 function VSCoqNvim:on_exit()

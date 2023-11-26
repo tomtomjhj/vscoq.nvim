@@ -66,7 +66,7 @@ local function make_on_init(user_on_init)
       return
     end
     M.clients[client.id] = VSCoqNvim:new(client)
-    M.clients[client.id]:open_panels()
+    M.clients[client.id]:panels()
     if user_on_init then
       user_on_init(client, initialize_result)
     end
@@ -119,6 +119,7 @@ local function proofView_notification_handler(_, result, ctx, _)
   M.clients[ctx.client_id]:proofView(result)
 end
 
+-- TODO: don't use custom setup and use lspconfig's add_hook_before?
 ---@param opts { vscoq?: table<string,any>, lsp?: table<string,any> }
 function M.setup(opts)
   opts = opts or {}
