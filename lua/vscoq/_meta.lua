@@ -91,4 +91,6 @@
 ---Response parameter for "vscoq/about", "vscoq/check", "vscoq/print", "vscoq/locate"
 ---@alias vscoq.SimpleCoqReponse vscoq.PpString
 
--- TODO: "vscoq/resetCoq"
+---Request parameter for "vscoq/resetCoq"
+---@class vscoq.ResetCoqRequest
+---@field textDocument lsp.VersionedTextDocumentIdentifier

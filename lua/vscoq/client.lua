@@ -259,6 +259,7 @@ function VSCoqNvim:simple_query(method, pattern, bufnr, position)
           ),
           vim.log.levels.ERROR
         )
+        return
       end
       self:ensure_query_panel()
       local lines = {}
@@ -286,6 +287,29 @@ commands[#commands + 1] = 'about'
 commands[#commands + 1] = 'check'
 commands[#commands + 1] = 'print'
 commands[#commands + 1] = 'locate'
+
+---@param bufnr? buffer
+function VSCoqNvim:resetCoq(bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  ---@type vscoq.ResetCoqRequest
+  local params = {
+    textDocument = util.make_versioned_text_document_params(bufnr),
+  }
+  util.request_async(self.lc, bufnr, 'vscoq/resetCoq', params, function(err)
+    if err then
+      vim.notify(
+        ('[vscoq.nvim] resetCoq error:\nparam:\n%s\nerror:%s\n'):format(
+          vim.inspect(params),
+          vim.inspect(err)
+        ),
+        vim.log.levels.ERROR
+      )
+      return
+    end
+    vim.api.nvim_buf_set_lines(self.proofview_panel, 0, -1, false, {})
+  end)
+end
+commands[#commands + 1] = 'resetCoq'
 
 function VSCoqNvim:on_CursorMoved()
   if self.vscoq.proof.mode == 1 then
