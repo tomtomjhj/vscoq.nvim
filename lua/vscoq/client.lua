@@ -95,9 +95,24 @@ end
 
 ---@param proofView vscoq.ProofViewNotification
 function VSCoqNvim:proofView(proofView)
-  local lines = render.ProofView(proofView)
   self:ensure_proofview_panel()
+
+  -- TODO: smarter view? relative position?
+  local wins = {} ---@type table<window, vim.fn.winsaveview.ret>
+  for _, win in ipairs(vim.fn.win_findbuf(self.proofview_panel) or {}) do
+    vim.api.nvim_win_call(win, function()
+      wins[win] = vim.fn.winsaveview()
+    end)
+  end
+
+  local lines = render.ProofView(proofView)
   vim.api.nvim_buf_set_lines(self.proofview_panel, 0, -1, false, lines)
+
+  for win, view in pairs(wins) do
+    vim.api.nvim_win_call(win, function()
+      vim.fn.winrestview(view)
+    end)
+  end
 end
 
 -- TODO: commands in panels
