@@ -20,6 +20,19 @@ function M.position_api_to_mark(position)
   return { position[1] + 1, position[2] }
 end
 
+---@param p1 APIPosition
+---@param p2 APIPosition
+---@return boolean
+function M.api_position_lt(p1, p2)
+  if p1[1] < p2[1] then
+    return true
+  elseif p1[1] == p2[1] then
+    return p1[2] < p2[2]
+  else
+    return false
+  end
+end
+
 ---@param bufnr buffer
 ---@param position MarkPosition
 ---@param offset_encoding lsp.PositionEncodingKind
@@ -62,7 +75,7 @@ end
 ---@param bufnr integer
 ---@param method string
 ---@param params table
----@param handler? lsp-handler
+---@param handler? lsp.Handler
 ---@return fun()|nil cancel function to cancel the request
 function M.request_async(client, bufnr, method, params, handler)
   local request_success, request_id = client.request(method, params, handler, bufnr)

@@ -39,6 +39,8 @@ lua require'vscoq'.setup()
         * `:VsCoq check {pattern}`
         * `:VsCoq print {pattern}`
         * `:VsCoq locate {pattern}`
+    * etc
+        * `:VsCoq jumpToEnd`: Jump to the end of the checked region.
 * [Commands from nvim-lspconfig](https://github.com/neovim/nvim-lspconfig#commands)
   work as expected.
   For example, run `:LspRestart` to restart `vscoqtop`.

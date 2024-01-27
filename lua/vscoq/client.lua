@@ -11,7 +11,7 @@ local render = require('vscoq.render')
 -- for now we have a single proofview panel.
 -- Once fixed, make config for single/multi proofview.
 -- ---@field buffers table<buffer, { proofview_bufnr: buffer }>
----@field buffers table<buffer, true>
+---@field buffers table<buffer, { highlights: vscoq.UpdateHighlightsNotification }>
 ---@field proofview_panel buffer
 ---@field query_panel buffer
 ---@field query_id integer latest query id. Only the latest query result is displayed.
@@ -66,6 +66,7 @@ commands[#commands + 1] = 'continuous'
 function VSCoqNvim:updateHighlights(highlights)
   local bufnr = vim.uri_to_bufnr(highlights.uri)
   vim.api.nvim_buf_clear_namespace(bufnr, self.highlight_ns, 0, -1)
+  self.buffers[bufnr].highlights = highlights
   -- for _, range in ipairs(highlights.processingRange) do
   for _, range in ipairs(highlights.processedRange) do
     vim.highlight.range(
@@ -78,6 +79,27 @@ function VSCoqNvim:updateHighlights(highlights)
     )
   end
 end
+
+function VSCoqNvim:jumpToEnd()
+  local win = vim.api.nvim_get_current_win()
+  local bufnr = vim.api.nvim_win_get_buf(win)
+  if not self.buffers[bufnr] then
+    return
+  end
+
+  local max_end
+  for _, range in ipairs(self.buffers[bufnr].highlights.processedRange) do
+    local end_ = util.position_lsp_to_api(bufnr, range['end'], self.lc.offset_encoding)
+    if max_end == nil or util.api_position_lt(max_end, end_) then
+      max_end = end_
+    end
+  end
+  if max_end then
+    vim.api.nvim_win_set_cursor(win, util.position_api_to_mark(max_end))
+  end
+end
+
+commands[#commands + 1] = 'jumpToEnd'
 
 ---@param target vscoq.MoveCursorNotification
 function VSCoqNvim:moveCursor(target)
@@ -345,7 +367,7 @@ end
 ---@param bufnr buffer
 function VSCoqNvim:attach(bufnr)
   assert(self.buffers[bufnr] == nil)
-  self.buffers[bufnr] = true
+  self.buffers[bufnr] = {}
 
   vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
     group = self.ag,
