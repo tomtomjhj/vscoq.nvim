@@ -205,7 +205,11 @@ commands[#commands + 1] = 'interpretToPoint'
 ---@param bufnr? buffer
 function VSCoqNvim:step(method, bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
-  local params = { textDocument = util.make_versioned_text_document_params(bufnr) }
+  local params = {
+    textDocument = util.make_versioned_text_document_params(bufnr),
+    -- TODO: step in continuous mode https://github.com/coq-community/vscoq/pull/734
+    position = method ~= 'vscoq/interpretToEnd' and vim.NIL or nil,
+  }
   return self.lc.notify(method, params)
 end
 
