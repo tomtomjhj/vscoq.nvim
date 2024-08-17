@@ -14,6 +14,9 @@ local M = {}
 -- The "Coq configuration" (vscoq.trace.server, ...) are low-level client-only config handled by vim.lsp.start_client().
 ---@class vscoq.Config
 M.default_config = {
+  memory = {
+    limit = 4,
+  },
   goals = {
     -- used for initAppSettings
     ---@type "Tabs"|"List"
@@ -26,12 +29,13 @@ M.default_config = {
       ---@type boolean
       full = false,
     },
+    maxDepth = 17,
   },
   proof = {
     ---@enum
     ---|0 # Manual
     ---|1 # Continuous
-    mode = 1,
+    mode = 0,
     cursor = {
       ---@type boolean
       sticky = true,
@@ -40,6 +44,7 @@ M.default_config = {
     delegation = 'None',
     ---@type integer
     workers = 1,
+    block = true,
   },
   completion = {
     ---@type boolean
