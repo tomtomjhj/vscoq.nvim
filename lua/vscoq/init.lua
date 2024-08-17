@@ -73,8 +73,8 @@ local function make_on_init(user_on_init)
   end
 end
 
----@param user_on_attach? fun(client: lsp.Client, bufnr: buffer)
----@return fun(client: lsp.Client, bufnr: buffer)
+---@param user_on_attach? fun(client: vim.lsp.Client, bufnr: buffer)
+---@return fun(client: vim.lsp.Client, bufnr: buffer)
 local function make_on_attach(user_on_attach)
   return function(client, bufnr)
     if not M.clients[client.id].buffers[bufnr] then
@@ -99,22 +99,22 @@ local function make_on_exit(user_on_exit)
   end
 end
 
----@type lsp-handler
+---@type lsp.Handler
 local function updateHighlights_notification_handler(_, result, ctx, _)
   M.clients[ctx.client_id]:updateHighlights(result)
 end
 
----@type lsp-handler
+---@type lsp.Handler
 local function moveCursor_notification_handler(_, result, ctx, _)
   M.clients[ctx.client_id]:moveCursor(result)
 end
 
----@type lsp-handler
+---@type lsp.Handler
 local function searchResult_notification_handler(_, result, ctx, _)
   M.clients[ctx.client_id]:searchResult(result)
 end
 
----@type lsp-handler
+---@type lsp.Handler
 local function proofView_notification_handler(_, result, ctx, _)
   M.clients[ctx.client_id]:proofView(result)
 end

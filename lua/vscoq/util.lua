@@ -71,7 +71,7 @@ function M.guess_position(bufnr)
   return vim.api.nvim_win_get_cursor(win)
 end
 
----@param client lsp.Client
+---@param client vim.lsp.Client
 ---@param bufnr integer
 ---@param method string
 ---@param params table

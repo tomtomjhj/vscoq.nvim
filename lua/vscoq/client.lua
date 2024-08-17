@@ -1,11 +1,8 @@
--- Suppress warnings about private methods of lsp.Client.
----@diagnostic disable: invisible
-
 local util = require('vscoq.util')
 local render = require('vscoq.render')
 
 ---@class VSCoqNvim
----@field lc lsp.Client
+---@field lc vim.lsp.Client
 ---@field vscoq vscoq.Config the current configuration
 -- TODO: Since proofView notification doesn't send which document it is for,
 -- for now we have a single proofview panel.
@@ -15,7 +12,7 @@ local render = require('vscoq.render')
 ---@field proofview_panel buffer
 ---@field query_panel buffer
 ---@field query_id integer latest query id. Only the latest query result is displayed.
----@field debounce_timer uv_timer_t
+---@field debounce_timer uv.uv_timer_t
 ---@field highlight_ns integer
 ---@field ag integer
 local VSCoqNvim = {}
@@ -24,18 +21,18 @@ VSCoqNvim.__index = VSCoqNvim
 ---@type string[] command names
 local commands = {}
 
----@param client lsp.Client
+---@param client vim.lsp.Client
 ---@return VSCoqNvim
 function VSCoqNvim:new(client)
   ---@type VSCoqNvim
   local new = {
     lc = client,
-    vscoq = vim.deepcopy(client.config.init_options),
+    vscoq = client.config.init_options and vim.deepcopy(client.config.init_options) or {},
     buffers = {},
     proofview_panel = -1,
     query_panel = -1,
     query_id = 0,
-    debounce_timer = assert(vim.loop.new_timer(), 'Could not create timer'),
+    debounce_timer = assert(vim.uv.new_timer(), 'Could not create timer'),
     highlight_ns = vim.api.nvim_create_namespace('vscoq-progress-' .. client.id),
     ag = vim.api.nvim_create_augroup('vscoq-' .. client.id, { clear = true }),
   }
