@@ -26,8 +26,8 @@ lua require'vscoq'.setup()
   See [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim/)
   for basic example configurations for working with LSP.
 * `:VsCoq` command
-    * `:VsCoq continuous`: Use the "Continuous" proof mode (default, show goals for the cursor position).
-    * `:VsCoq manual`: Use the "Manual" proof mode, where the following four commands are used for navigation.
+    * `:VsCoq continuous`: Use the "Continuous" proof mode. It shows goals for the cursor position.
+    * `:VsCoq manual`: Use the "Manual" proof mode (default), where the following four commands are used for navigation.
         * `:VsCoq stepForward`
         * `:VsCoq stepBackward`
         * `:VsCoq interpretToEnd`
@@ -46,24 +46,30 @@ lua require'vscoq'.setup()
   For example, run `:LspRestart` to restart `vscoqtop`.
 
 ## Configurations
+The `setup()` function takes a table with the followings keys:
+* `vscoq`: Settings specific to VsCoq.
+  This is used in both the client and the server.
+  See the `"configuration"` key in <https://github.com/coq-community/vscoq/blob/main/client/package.json>.
+    * NOTE: `"vscoq.path"`, `"vscoq.args"`, and `"vscoq.trace.server"` should be configured in the `lsp` table below.
+* `lsp`: The settings forwarded to `:help lspconfig-setup`.
 
+Example:
 ```lua
 require'vscoq'.setup {
-  -- Configuration for vscoq, used in both the client and the server.
-  -- See "configuration" in https://github.com/coq-community/vscoq/blob/main/client/package.json.
-  -- "vscoq.path", "vscoq.args", and "vscoq.trace.server" should be configured in the "lsp" table below.
-  -- The following is an example.
   vscoq = {
     proof = {
-      mode = 0, -- manual mode
+      -- In manual mode, don't move the cursor when stepping forward/backward a command
+      cursor = { sticky = false },
     },
   },
-
-  -- The configuration forwarded to `:help lspconfig-setup`.
-  -- The following is an example.
   lsp = {
     on_attach = function(client, bufnr)
       -- your mappings, etc
+
+      -- In manual mode, use ctrl-alt-{j,k,l} to step.
+      vim.keymap.set({'n', 'i'}, '<C-M-j>', '<Cmd>VsCoq stepForward<CR>', { buffer = bufnr })
+      vim.keymap.set({'n', 'i'}, '<C-M-k>', '<Cmd>VsCoq stepBackward<CR>', { buffer = bufnr })
+      vim.keymap.set({'n', 'i'}, '<C-M-l>', '<Cmd>VsCoq interpretToPoint<CR>', { buffer = bufnr })
     end,
     autostart = false, -- use this if you want to manually `:LspStart vscoqtop`.
   },
