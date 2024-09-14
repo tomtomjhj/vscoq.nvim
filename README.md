@@ -39,6 +39,10 @@ lua require'vscoq'.setup()
         * `:VsCoq check {pattern}`
         * `:VsCoq print {pattern}`
         * `:VsCoq locate {pattern}`
+    * Proofview
+        * `:VsCoq admitted`: Show the admitted goals.
+        * `:VsCoq shelved`: Show the shelved goals.
+        * `:VsCoq goals`: Show the normal goals and messages (default).
     * etc
         * `:VsCoq jumpToEnd`: Jump to the end of the checked region.
 * [Commands from nvim-lspconfig](https://github.com/neovim/nvim-lspconfig#commands)

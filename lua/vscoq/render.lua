@@ -268,42 +268,6 @@ function M.CoqMessages(messages)
   return lines
 end
 
----@param proofView vscoq.ProofViewNotification
----@return string[]
-function M.ProofView(proofView)
-  local lines = {}
-  if proofView.proof then
-    vim.list_extend(lines, M.goals(proofView.proof.goals))
-  end
-  if #proofView.messages > 0 then
-    lines[#lines + 1] = ''
-    lines[#lines + 1] = ''
-    lines[#lines + 1] =
-      'Messages ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-    lines[#lines + 1] = ''
-    vim.list_extend(lines, M.CoqMessages(proofView.messages))
-  end
-  if proofView.proof then
-    if #proofView.proof.shelvedGoals > 0 then
-      lines[#lines + 1] = ''
-      lines[#lines + 1] = ''
-      lines[#lines + 1] =
-        'Shelved ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-      lines[#lines + 1] = ''
-      vim.list_extend(lines, M.goals(proofView.proof.shelvedGoals))
-    end
-    if #proofView.proof.givenUpGoals > 0 then
-      lines[#lines + 1] = ''
-      lines[#lines + 1] = ''
-      lines[#lines + 1] =
-        'Given Up ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-      lines[#lines + 1] = ''
-      vim.list_extend(lines, M.goals(proofView.proof.givenUpGoals))
-    end
-  end
-  return lines
-end
-
 ---@param result vscoq.SearchCoqResult
 ---@return string[]
 function M.searchCoqResult(result)

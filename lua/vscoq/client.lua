@@ -10,6 +10,7 @@ local render = require('vscoq.render')
 -- ---@field buffers table<buffer, { proofview_bufnr: buffer }>
 ---@field buffers table<buffer, { highlights: vscoq.UpdateHighlightsNotification }>
 ---@field proofview_panel buffer
+---@field proofview_content? vscoq.ProofViewNotification
 ---@field query_panel buffer
 ---@field query_id integer latest query id. Only the latest query result is displayed.
 ---@field debounce_timer uv.uv_timer_t
@@ -114,9 +115,17 @@ end
 
 ---@param proofView vscoq.ProofViewNotification
 function VSCoqNvim:proofView(proofView)
+  self.proofview_content = proofView
+  self:show_proofView { 'goals', 'messages' }
+end
+
+---@param items ('goals'|'messages'|'shelvedGoals'|'givenUpGoals')[]
+function VSCoqNvim:show_proofView(items)
+  assert(self.proofview_content)
+
   self:ensure_proofview_panel()
 
-  -- TODO: smarter view? relative position?
+  -- TODO: smarter view? relative position? always focus on the first goal?
   local wins = {} ---@type table<window, vim.fn.winsaveview.ret>
   for _, win in ipairs(vim.fn.win_findbuf(self.proofview_panel) or {}) do
     vim.api.nvim_win_call(win, function()
@@ -124,7 +133,54 @@ function VSCoqNvim:proofView(proofView)
     end)
   end
 
-  local lines = render.ProofView(proofView)
+  local lines = {}
+
+  if self.proofview_content.proof then
+    local stat = {}
+    if #self.proofview_content.proof.goals > 0 then
+      stat[#stat + 1] = #self.proofview_content.proof.goals .. ' goals'
+    end
+    if #self.proofview_content.proof.shelvedGoals > 0 then
+      stat[#stat + 1] = #self.proofview_content.proof.shelvedGoals .. ' shelved'
+    end
+    if #self.proofview_content.proof.givenUpGoals > 0 then
+      stat[#stat + 1] = #self.proofview_content.proof.givenUpGoals .. ' admitted'
+    end
+    lines[#lines + 1] = table.concat(stat, ', ')
+  end
+
+  for i, item in ipairs(items) do
+    if i > 1 then
+      lines[#lines + 1] = ''
+      lines[#lines + 1] = ''
+    end
+    if item == 'messages' and #self.proofview_content.messages > 0 then
+      lines[#lines + 1] =
+        'Messages ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      lines[#lines + 1] = ''
+      vim.list_extend(lines, render.CoqMessages(self.proofview_content.messages))
+    elseif self.proofview_content.proof then
+      if item == 'goals' then
+        if #self.proofview_content.proof.goals == 0 then
+          -- TODO: The server should provide info about the next goal
+          lines[#lines + 1] = 'This subgoal is done.'
+        else
+          vim.list_extend(lines, render.goals(self.proofview_content.proof.goals))
+        end
+      elseif item == 'shelvedGoals' then
+        lines[#lines + 1] =
+          'Shelved ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        lines[#lines + 1] = ''
+        vim.list_extend(lines, render.goals(self.proofview_content.proof.shelvedGoals))
+      elseif item == 'givenUpGoals' then
+        lines[#lines + 1] =
+          'Given Up ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        lines[#lines + 1] = ''
+        vim.list_extend(lines, render.goals(self.proofview_content.proof.givenUpGoals))
+      end
+    end
+  end
+
   vim.api.nvim_buf_set_lines(self.proofview_panel, 0, -1, false, lines)
 
   for win, view in pairs(wins) do
@@ -133,6 +189,25 @@ function VSCoqNvim:proofView(proofView)
     end)
   end
 end
+
+function VSCoqNvim:shelved()
+  if self.proofview_content then
+    self:show_proofView { 'shelvedGoals' }
+  end
+end
+function VSCoqNvim:admitted()
+  if self.proofview_content then
+    self:show_proofView { 'givenUpGoals' }
+  end
+end
+function VSCoqNvim:goals()
+  if self.proofview_content then
+    self:show_proofView { 'goals', 'messages' }
+  end
+end
+commands[#commands + 1] = 'shelved'
+commands[#commands + 1] = 'admitted'
+commands[#commands + 1] = 'goals'
 
 -- TODO: commands in panels
 function VSCoqNvim:ensure_proofview_panel()
