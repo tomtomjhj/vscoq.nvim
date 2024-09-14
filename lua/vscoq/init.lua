@@ -27,7 +27,7 @@ M.default_config = {
     },
     messages = {
       ---@type boolean
-      full = false,
+      full = true,
     },
     maxDepth = 17,
   },
