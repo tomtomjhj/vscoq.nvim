@@ -7,17 +7,21 @@ local M = {}
 function M.PpString(pp, mode)
   mode = mode or 'horizontal'
   if pp[1] == 'Ppcmd_empty' then
+    ---@cast pp vscoq.PpString.Ppcmd_empty
     return ''
   elseif pp[1] == 'Ppcmd_string' then
-    return pp[2] --[[@as string]]
+    ---@cast pp vscoq.PpString.Ppcmd_string
+    return pp[2]
   elseif pp[1] == 'Ppcmd_glue' then
+    ---@cast pp vscoq.PpString.Ppcmd_glue
     return table.concat(
       vim.tbl_map(function(p)
         return M.PpString(p, mode)
-      end, pp[2] --[=[@as vscoq.PpString[]]=]),
+      end, pp[2]),
       ''
     )
   elseif pp[1] == 'Ppcmd_box' then
+    ---@cast pp vscoq.PpString.Ppcmd_box
     if pp[2][1] == 'Pp_hbox' then
       mode = 'horizontal'
     elseif pp[2][1] == 'Pp_vbox' then
@@ -28,20 +32,24 @@ function M.PpString(pp, mode)
     elseif pp[2][1] == 'Pp_hovbox' then
       mode = 'horizontal'
     end
-    return M.PpString(pp[3] --[[@as vscoq.PpString]], mode)
+    return M.PpString(pp[3], mode)
   elseif pp[1] == 'Ppcmd_tag' then
+    ---@cast pp vscoq.PpString.Ppcmd_tag
     -- TODO: use PpTag for highlighting (difficult)
-    return M.PpString(pp[3] --[[@as vscoq.PpString]], mode)
+    return M.PpString(pp[3], mode)
   elseif pp[1] == 'Ppcmd_print_break' then
+    ---@cast pp vscoq.PpString.Ppcmd_print_break
     if mode == 'horizontal' then
-      return string.rep(' ', pp[2] --[[@as integer]])
+      return string.rep(' ', pp[2])
     elseif mode == 'vertical' then
       return '\n'
     end
     error()
   elseif pp[1] == 'Ppcmd_force_newline' then
+    ---@cast pp vscoq.PpString.Ppcmd_force_newline
     return '\n'
   elseif pp[1] == 'Ppcmd_comment' then
+    ---@cast pp vscoq.PpString.Ppcmd_comment
     return vim.inspect(pp[2])
   end
   error(pp[1])
