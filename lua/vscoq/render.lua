@@ -189,8 +189,11 @@ function M.PpString(pp_root)
         -- TODO: handle tags. start extmark
       elseif pp[1] == 'Ppcmd_print_break' then
         ---@cast pp vscoq.PpString.Ppcmd_print_break
-        if stack[#stack].mode > 0 and (pp.size > space or stack[#stack].mode == 2) then
-          space = stack[#stack].space - pp[3]
+        -- NOTE: CoqMessage contains breaks without enclosing box.
+        -- This behaves like regular text wrapping.
+        local top = #stack > 0 and stack[#stack] or { mode = 1, space = LINE_SIZE }
+        if top.mode > 0 and (pp.size > space or top.mode == 2) then
+          space = top.space - pp[3]
           lines[#lines + 1] = table.concat(cur_line)
           cur_line = { string.rep(' ', LINE_SIZE - space) }
         else
@@ -198,7 +201,9 @@ function M.PpString(pp_root)
         end
       elseif pp[1] == 'Ppcmd_force_newline' then
         ---@cast pp vscoq.PpString.Ppcmd_force_newline
-        space = stack[#stack].space
+        if #stack > 0 then
+          space = stack[#stack].space
+        end
         lines[#lines + 1] = table.concat(cur_line)
         cur_line = { string.rep(' ', LINE_SIZE - space) }
       end
