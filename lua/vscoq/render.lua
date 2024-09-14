@@ -157,13 +157,13 @@ function M.PpString(pp_root)
 
   local lines = {} ---@type string[]
   local cur_line = {} ---@type string[]
-  local space = LINE_SIZE ---@type integer remaining space in cur_line
-  ---@type {space: integer, mode: 0|1|2}[] box stack. 0: no break. 1: break as needed. 2: break all
-  local stack = {}
+  local cursor = 0 ---@type integer the 0-indexed position of the next output
+  ---@type {indent: integer, mode: 0|1|2}[] 0: no break. 1: break as needed. 2: break all
+  local box_stack = {}
 
   local function output(str, size)
     cur_line[#cur_line + 1] = str
-    space = space - size
+    cursor = cursor + size
   end
 
   for cmd, pp in PpString_iter(pp_root) do
@@ -179,11 +179,11 @@ function M.PpString(pp_root)
         elseif pp[2][1] == 'Pp_vbox' then
           mode = 2
         elseif pp[2][1] == 'Pp_hvbox' then
-          mode = pp.size > space and 2 or 0
+          mode = cursor + pp.size > LINE_SIZE and 2 or 0
         elseif pp[2][1] == 'Pp_hovbox' then
           mode = 1
         end
-        table.insert(stack, { space = space - (pp[2][2] or 0), mode = mode })
+        table.insert(box_stack, { indent = cursor + (pp[2][2] or 0), mode = mode })
       elseif pp[1] == 'Ppcmd_tag' then
         ---@cast pp vscoq.PpString.Ppcmd_tag
         -- TODO: handle tags. start extmark
@@ -191,24 +191,24 @@ function M.PpString(pp_root)
         ---@cast pp vscoq.PpString.Ppcmd_print_break
         -- NOTE: CoqMessage contains breaks without enclosing box.
         -- This behaves like regular text wrapping.
-        local top = #stack > 0 and stack[#stack] or { mode = 1, space = LINE_SIZE }
-        if top.mode > 0 and (pp.size > space or top.mode == 2) then
-          space = top.space - pp[3]
+        local top = #box_stack > 0 and box_stack[#box_stack] or { mode = 1, indent = 0 }
+        if top.mode > 0 and (cursor + pp.size > LINE_SIZE or top.mode == 2) then
+          cursor = top.indent + pp[3]
           lines[#lines + 1] = table.concat(cur_line)
-          cur_line = { string.rep(' ', LINE_SIZE - space) }
+          cur_line = { string.rep(' ', cursor) }
         else
           output(string.rep(' ', pp[2]), pp[2])
         end
       elseif pp[1] == 'Ppcmd_force_newline' then
         ---@cast pp vscoq.PpString.Ppcmd_force_newline
-        local top = #stack > 0 and stack[#stack] or { mode = 1, space = LINE_SIZE }
-        space = top.space
+        local top = #box_stack > 0 and box_stack[#box_stack] or { mode = 1, indent = 0 }
+        cursor = top.indent
         lines[#lines + 1] = table.concat(cur_line)
-        cur_line = { string.rep(' ', LINE_SIZE - space) }
+        cur_line = { string.rep(' ', cursor) }
       end
     else
       if pp[1] == 'Ppcmd_box' then
-        table.remove(stack)
+        table.remove(box_stack)
       elseif pp[1] == 'Ppcmd_tag' then
         -- TODO: handle tags. end extmark
       end
