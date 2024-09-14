@@ -201,9 +201,8 @@ function M.PpString(pp_root)
         end
       elseif pp[1] == 'Ppcmd_force_newline' then
         ---@cast pp vscoq.PpString.Ppcmd_force_newline
-        if #stack > 0 then
-          space = stack[#stack].space
-        end
+        local top = #stack > 0 and stack[#stack] or { mode = 1, space = LINE_SIZE }
+        space = top.space
         lines[#lines + 1] = table.concat(cur_line)
         cur_line = { string.rep(' ', LINE_SIZE - space) }
       end
