@@ -168,7 +168,15 @@ local function PpString(pp_root)
     if cmd == Enter then
       if pp[1] == 'Ppcmd_string' then
         ---@cast pp vscoq.PpString.Ppcmd_string
-        output(pp[2], pp.size)
+        for i, s in ipairs(vim.split(pp[2], '\n')) do
+          -- handle multi-line string. no indent.
+          if i > 1 then
+            cursor = 0
+            lines[#lines + 1] = table.concat(cur_line)
+            cur_line = {}
+          end
+          output(s, vim.fn.strdisplaywidth(s))
+        end
       elseif pp[1] == 'Ppcmd_box' then
         ---@cast pp vscoq.PpString.Ppcmd_box
         local mode
