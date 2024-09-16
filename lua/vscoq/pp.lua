@@ -18,6 +18,8 @@
 -- * vscoq's implementation: https://github.com/coq-community/vscoq/pull/900
 -- * related: https://www.reddit.com/r/ProgrammingLanguages/comments/vzp7td/pretty_printing_which_paper/
 
+local TaggedLines = require('vscoq.tagged_lines')
+
 ---@alias Enter 0
 local Enter = 0
 ---@alias Leave 1
@@ -146,8 +148,15 @@ local function PpString_compute_sizes(pp_root)
   end
 end
 
+---@class vscoq.Tag
+---@field [1] integer 0-indexed offset of the start line
+---@field [2] integer start col
+---@field [3] integer end line offset
+---@field [4] integer end col
+---@field [0] string
+
 ---@param pp_root vscoq.PpString
----@return string
+---@return vscoq.TaggedLines
 local function PpString(pp_root)
   if not pp_root.size then
     PpString_compute_sizes(pp_root)
@@ -155,13 +164,18 @@ local function PpString(pp_root)
 
   local lines = {} ---@type string[]
   local cur_line = {} ---@type string[]
-  local cursor = 0 ---@type integer the 0-indexed position of the next output
+  local tags = {} ---@type vscoq.Tag[]
+  local cursor = 0 ---@type integer the 0-indexed position (strdisplaywidth) of the next output
+  local cursor_byte = 0 --- like `cursor`, but with byte length
   ---@type {indent: integer, mode: 0|1|2}[] 0: no break. 1: break as needed. 2: break all
   local box_stack = {}
+  ---@type vscoq.Tag[]
+  local tag_stack = {}
 
   local function output(str, size)
     cur_line[#cur_line + 1] = str
     cursor = cursor + size
+    cursor_byte = cursor_byte + #str
   end
 
   for cmd, pp in PpString_iter(pp_root) do
@@ -171,7 +185,7 @@ local function PpString(pp_root)
         for i, s in ipairs(vim.split(pp[2], '\n')) do
           -- handle multi-line string. no indent.
           if i > 1 then
-            cursor = 0
+            cursor, cursor_byte = 0, 0
             lines[#lines + 1] = table.concat(cur_line)
             cur_line = {}
           end
@@ -192,7 +206,7 @@ local function PpString(pp_root)
         table.insert(box_stack, { indent = cursor + (pp[2][2] or 0), mode = mode })
       elseif pp[1] == 'Ppcmd_tag' then
         ---@cast pp vscoq.PpString.Ppcmd_tag
-        -- TODO: handle tags. start extmark
+        table.insert(tag_stack, { #lines, cursor_byte, [0] = pp[2] })
       elseif pp[1] == 'Ppcmd_print_break' then
         ---@cast pp vscoq.PpString.Ppcmd_print_break
         -- NOTE: CoqMessage contains breaks without enclosing box.
@@ -200,6 +214,7 @@ local function PpString(pp_root)
         local top = #box_stack > 0 and box_stack[#box_stack] or { mode = 1, indent = 0 }
         if top.mode > 0 and (cursor + pp.size > LINE_SIZE or top.mode == 2) then
           cursor = top.indent + pp[3]
+          cursor_byte = cursor
           lines[#lines + 1] = table.concat(cur_line)
           cur_line = { string.rep(' ', cursor) }
         else
@@ -209,6 +224,7 @@ local function PpString(pp_root)
         ---@cast pp vscoq.PpString.Ppcmd_force_newline
         local top = #box_stack > 0 and box_stack[#box_stack] or { mode = 1, indent = 0 }
         cursor = top.indent
+        cursor_byte = cursor
         lines[#lines + 1] = table.concat(cur_line)
         cur_line = { string.rep(' ', cursor) }
       end
@@ -216,7 +232,10 @@ local function PpString(pp_root)
       if pp[1] == 'Ppcmd_box' then
         table.remove(box_stack)
       elseif pp[1] == 'Ppcmd_tag' then
-        -- TODO: handle tags. end extmark
+        local tag = table.remove(tag_stack) ---@type vscoq.Tag
+        tag[3] = #lines
+        tag[4] = cursor_byte
+        table.insert(tags, tag)
       end
     end
   end
@@ -225,7 +244,7 @@ local function PpString(pp_root)
     lines[#lines + 1] = table.concat(cur_line)
   end
 
-  return table.concat(lines, '\n')
+  return TaggedLines.new(lines, tags)
 end
 
 return PpString

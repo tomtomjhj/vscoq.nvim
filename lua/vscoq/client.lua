@@ -1,4 +1,5 @@
 local util = require('vscoq.util')
+local pp = require('vscoq.pp')
 local render = require('vscoq.render')
 
 ---@class VSCoqNvim
@@ -133,55 +134,8 @@ function VSCoqNvim:show_proofView(items)
     end)
   end
 
-  local lines = {}
-
-  if self.proofview_content.proof then
-    local stat = {}
-    if #self.proofview_content.proof.goals > 0 then
-      stat[#stat + 1] = #self.proofview_content.proof.goals .. ' goals'
-    end
-    if #self.proofview_content.proof.shelvedGoals > 0 then
-      stat[#stat + 1] = #self.proofview_content.proof.shelvedGoals .. ' shelved'
-    end
-    if #self.proofview_content.proof.givenUpGoals > 0 then
-      stat[#stat + 1] = #self.proofview_content.proof.givenUpGoals .. ' admitted'
-    end
-    lines[#lines + 1] = table.concat(stat, ', ')
-  end
-
-  for i, item in ipairs(items) do
-    if i > 1 then
-      lines[#lines + 1] = ''
-      lines[#lines + 1] = ''
-    end
-    if item == 'messages' and #self.proofview_content.messages > 0 then
-      lines[#lines + 1] =
-        'Messages ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-      lines[#lines + 1] = ''
-      vim.list_extend(lines, render.CoqMessages(self.proofview_content.messages))
-    elseif self.proofview_content.proof then
-      if item == 'goals' then
-        if #self.proofview_content.proof.goals == 0 then
-          -- TODO: The server should provide info about the next goal
-          lines[#lines + 1] = 'This subgoal is done.'
-        else
-          vim.list_extend(lines, render.goals(self.proofview_content.proof.goals))
-        end
-      elseif item == 'shelvedGoals' then
-        lines[#lines + 1] =
-          'Shelved ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-        lines[#lines + 1] = ''
-        vim.list_extend(lines, render.goals(self.proofview_content.proof.shelvedGoals))
-      elseif item == 'givenUpGoals' then
-        lines[#lines + 1] =
-          'Given Up ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-        lines[#lines + 1] = ''
-        vim.list_extend(lines, render.goals(self.proofview_content.proof.givenUpGoals))
-      end
-    end
-  end
-
-  vim.api.nvim_buf_set_lines(self.proofview_panel, 0, -1, false, lines)
+  local tl = render.proofView(self.proofview_content, items)
+  vim.api.nvim_buf_set_lines(self.proofview_panel, 0, -1, false, tl[1])
 
   for win, view in pairs(wins) do
     vim.api.nvim_win_call(win, function()
@@ -336,10 +290,14 @@ function VSCoqNvim:searchResult(result)
   if tonumber(result.id) < self.query_id then
     return
   end
-  -- Each notification sends a single item.
-  local lines = render.searchCoqResult(result)
   self:ensure_query_panel()
-  vim.api.nvim_buf_set_lines(self.query_panel, -1, -1, false, lines)
+  -- NOTE: Each notification sends a single item.
+  -- Because of that, the panel should maintain TaggedLines to which the new items are appended.
+  -- But it turns out there is no reason for search to be implemented that way.
+  -- So let's not care about it and wait for the fix.
+  -- https://github.com/coq-community/vscoq/issues/906#issuecomment-2353000748
+  local tl = render.searchCoqResult(result)
+  vim.api.nvim_buf_set_lines(self.query_panel, -1, -1, false, tl[1])
 end
 
 ---@param method "vscoq/about"|"vscoq/check"|"vscoq/print"|"vscoq/locate"
@@ -375,11 +333,10 @@ function VSCoqNvim:simple_query(method, pattern, bufnr, position)
         return
       end
       self:ensure_query_panel()
-      local lines = {}
-      vim.list_extend(lines, vim.split(render.PpString(result), '\n'))
       -- :h undo-break
       vim.bo[self.query_panel].undolevels = vim.bo[self.query_panel].undolevels
-      vim.api.nvim_buf_set_lines(self.query_panel, 0, -1, false, lines)
+      local tl = pp(result)
+      vim.api.nvim_buf_set_lines(self.query_panel, 0, -1, false, tl[1])
     end
   )
 end
