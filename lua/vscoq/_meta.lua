@@ -124,6 +124,7 @@
 ---@field goals vscoq.Goal[]
 ---@field shelvedGoals vscoq.Goal[]
 ---@field givenUpGoals vscoq.Goal[]
+---@field unfocusedGoals vscoq.Goal[]
 
 ---@alias vscoq.MessageSeverity "Error" | "Warning" | "Information"
 

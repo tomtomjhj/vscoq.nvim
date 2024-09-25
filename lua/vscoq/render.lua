@@ -91,11 +91,23 @@ function M.proofView(proofView, items)
       tl:append(M.CoqMessages(proofView.messages))
     elseif proofView.proof then
       if item == 'goals' then
-        if #proofView.proof.goals == 0 then
-          -- TODO: The server should provide info about the next goal
-          tl:add_line('This subgoal is done.')
-        else
+        if #proofView.proof.goals > 0 then
           tl:append(M.goals(proofView.proof.goals))
+        elseif #proofView.proof.unfocusedGoals > 0 then
+          tl:add_line('This subproof is complete.')
+          tl:add_line('')
+          tl:add_line(
+            'Next unfocused subgoals ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+          )
+          tl:add_line('')
+          tl:append(M.goals(proofView.proof.unfocusedGoals))
+        elseif #proofView.proof.givenUpGoals > 0 then
+          tl:add_line('No more subgoals, but there are some admitted subgoals.')
+          tl:add_line('Go back and solve them, or use `Admitted.`')
+        elseif #proofView.proof.shelvedGoals > 0 then
+          tl:add_line('No more subgoals, but there are some shelved subgoals. Try `Unshelve.`')
+        else
+          tl:add_line('There are no more subgoals')
         end
       elseif item == 'shelvedGoals' then
         padding()
