@@ -36,6 +36,10 @@ M.default_config = {
     ---|0 # Manual
     ---|1 # Continuous
     mode = 0,
+    ---@enum
+    ---|0 # Cursor
+    ---|1 # NextCommand
+    pointInterpretationMode = 0,
     cursor = {
       ---@type boolean
       sticky = true,
