@@ -118,31 +118,15 @@ local function PpString_compute_sizes(pp_root)
   for cmd, pp in PpString_iter(pp_root) do
     if cmd == Leave and pp[1] == 'Ppcmd_glue' then
       ---@cast pp vscoq.PpString.Ppcmd_glue
-      local last_break_i ---@type integer?
-      for i, child_i in ipairs(pp[2]) do
-        if child_i[1] == 'Ppcmd_print_break' then
-          ---@cast child_i vscoq.PpString.Ppcmd_print_break
-          local size = 0
-          for j = i + 1, #pp[2], 1 do
-            local child_j = pp[2][j]
-            if child_j[1] == 'Ppcmd_print_break' then
-              break
-            else
-              size = size + child_j.size
-            end
-          end
-          child_i.size = size
-          last_break_i = i
+      local last_break ---@type vscoq.PpString.Ppcmd_print_break?
+      for _, child in ipairs(pp[2]) do
+        if child[1] == 'Ppcmd_print_break' then
+          ---@cast child vscoq.PpString.Ppcmd_print_break
+          last_break = child
+          last_break.size = 0
+        elseif last_break then
+          last_break.size = last_break.size + child.size
         end
-      end
-      if last_break_i then
-        local child_i = pp[2][last_break_i]
-        local size = 0
-        for j = last_break_i + 1, #pp[2], 1 do
-          local child_j = pp[2][j]
-          size = size + child_j.size
-        end
-        child_i.size = size
       end
     end
   end
