@@ -75,7 +75,8 @@ require'vscoq'.setup {
       vim.keymap.set({'n', 'i'}, '<C-M-k>', '<Cmd>VsCoq stepBackward<CR>', { buffer = bufnr })
       vim.keymap.set({'n', 'i'}, '<C-M-l>', '<Cmd>VsCoq interpretToPoint<CR>', { buffer = bufnr })
     end,
-    autostart = false, -- use this if you want to manually `:LspStart vscoqtop`.
+    -- autostart = false, -- use this if you want to manually `:LspStart vscoqtop`.
+    -- cmd = { 'vscoqtop', '-bt', '-vscoq-d', 'all' }, -- for debugging the server
   },
 }
 ```
