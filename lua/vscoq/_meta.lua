@@ -61,39 +61,39 @@
 ---@class vscoq.PpString.Ppcmd_string
 ---@field [1] "Ppcmd_string"
 ---@field [2] string
----@field size integer
+---@field size? integer
 
 ---@class vscoq.PpString.Ppcmd_glue
 ---@field [1] "Ppcmd_glue"
 ---@field [2] (vscoq.PpString)[]
----@field size integer
+---@field size? integer
 
 ---@class vscoq.PpString.Ppcmd_box
 ---@field [1] "Ppcmd_box"
 ---@field [2] vscoq.BlockType
 ---@field [3] vscoq.PpString
----@field size integer
+---@field size? integer
 
 ---@class vscoq.PpString.Ppcmd_tag
 ---@field [1] "Ppcmd_tag"
 ---@field [2] vscoq.PpTag
 ---@field [3] vscoq.PpString
----@field size integer
+---@field size? integer
 
 ---@class vscoq.PpString.Ppcmd_print_break
 ---@field [1] "Ppcmd_print_break"
 ---@field [2] integer number of spaces when this break is not line break
 ---@field [3] integer additional indent of the new lines (added to box's indent)
----@field size integer
+---@field size? integer
 
 ---@class vscoq.PpString.Ppcmd_force_newline
 ---@field [1] "Ppcmd_force_newline"
----@field size integer
+---@field size? integer
 
 ---@class vscoq.PpString.Ppcmd_comment
 ---@field [1] "Ppcmd_comment"
 ---@field [2] string[]
----@field size integer
+---@field size? integer
 
 --[[
   if pp[1] == 'Ppcmd_empty' then
@@ -126,7 +126,11 @@
 ---@field givenUpGoals vscoq.Goal[]
 ---@field unfocusedGoals vscoq.Goal[]
 
----@alias vscoq.MessageSeverity "Error" | "Warning" | "Information"
+---@enum vscoq.MessageSeverity
+---|1 # error
+---|2 # warning
+---|3 # information
+---|4 # hint
 
 ---@alias vscoq.CoqMessage {[1]: vscoq.MessageSeverity, [2]: vscoq.PpString}
 

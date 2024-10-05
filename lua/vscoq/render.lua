@@ -38,17 +38,26 @@ function M.goals(goals)
   return tl
 end
 
+vim.cmd([[
+hi def link VsCoqError DiagnosticError
+hi def link VsCoqWarn DiagnosticWarn
+hi def link VsCoqInfo DiagnosticInfo
+hi def link VsCoqHint DiagnosticHint
+]])
+
 -- NOTE
 -- * no severity tag in pp
 -- * output of `info_eauto` is multiple messages
--- TODO: show this on info panel? That's more similar to Coqtail.
 ---@param messages vscoq.CoqMessage[]
 ---@return vscoq.TaggedLines
 function M.CoqMessages(messages)
   local tl = TaggedLines.new()
   for _, message in ipairs(messages) do
-    tl:add_line(({ 'Error', 'Warning', 'Information' })[message[1]] .. ':')
-    tl:append(pp(message[2]))
+    tl:append(pp {
+      'Ppcmd_tag',
+      ({ 'VsCoqError', 'VsCoqWarn', 'VsCoqInfo', 'VsCoqHint' })[message[1]],
+      message[2],
+    })
   end
   return tl
 end
@@ -82,14 +91,7 @@ function M.proofView(proofView, items)
         tl:add_line('')
       end
     end
-    if item == 'messages' and #proofView.messages > 0 then
-      padding()
-      tl:add_line(
-        'Messages ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-      )
-      tl:add_line('')
-      tl:append(M.CoqMessages(proofView.messages))
-    elseif proofView.proof then
+    if proofView.proof then
       if item == 'goals' then
         if #proofView.proof.goals > 0 then
           tl:append(M.goals(proofView.proof.goals))

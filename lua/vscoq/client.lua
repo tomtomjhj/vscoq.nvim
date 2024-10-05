@@ -16,6 +16,7 @@ local render = require('vscoq.render')
 ---@field query_id integer latest query id. Only the latest query result is displayed.
 ---@field debounce_timer uv.uv_timer_t
 ---@field highlight_ns integer
+---@field tag_ns integer
 ---@field ag integer
 local VSCoqNvim = {}
 VSCoqNvim.__index = VSCoqNvim
@@ -36,6 +37,7 @@ function VSCoqNvim:new(client)
     query_id = 0,
     debounce_timer = assert(vim.uv.new_timer(), 'Could not create timer'),
     highlight_ns = vim.api.nvim_create_namespace('vscoq-progress-' .. client.id),
+    tag_ns = vim.api.nvim_create_namespace('vscoq-tag-' .. client.id),
     ag = vim.api.nvim_create_augroup('vscoq-' .. client.id, { clear = true }),
   }
   setmetatable(new, self)
@@ -136,6 +138,29 @@ function VSCoqNvim:show_proofView(items)
 
   local tl = render.proofView(self.proofview_content, items)
   vim.api.nvim_buf_set_lines(self.proofview_panel, 0, -1, false, tl[1])
+
+  self:ensure_query_panel()
+  if #self.proofview_content.messages > 0 then
+    local msg_tl = render.CoqMessages(self.proofview_content.messages)
+    vim.bo[self.query_panel].undolevels = vim.bo[self.query_panel].undolevels
+    vim.api.nvim_buf_set_lines(self.query_panel, 0, -1, false, msg_tl[1])
+    for _, tag in ipairs(msg_tl[2]) do
+      vim.api.nvim_buf_set_extmark(self.query_panel, self.tag_ns, tag[1], tag[2], {
+        end_row = tag[3],
+        end_col = tag[4],
+        hl_group = tag[0],
+      })
+    end
+  elseif
+    not (
+      vim.api.nvim_buf_line_count(self.query_panel) == 1
+      and vim.api.nvim_buf_get_lines(self.query_panel, 0, -1, false)[1] == ''
+    )
+  then
+    vim.api.nvim_buf_clear_namespace(self.query_panel, self.tag_ns, 0, -1)
+    vim.bo[self.query_panel].undolevels = vim.bo[self.query_panel].undolevels
+    vim.api.nvim_buf_set_lines(self.query_panel, 0, -1, false, {})
+  end
 
   for win, view in pairs(wins) do
     vim.api.nvim_win_call(win, function()
