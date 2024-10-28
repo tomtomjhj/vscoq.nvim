@@ -33,6 +33,12 @@ function M.api_position_lt(p1, p2)
   end
 end
 
+local str_utfindex = vim.fn.has('nvim-0.11') == 1 and function(s, encoding, index)
+  return vim.str_utfindex(s, encoding, index, false)
+end or function(s, encoding, index)
+  return vim.lsp.util._str_utfindex_enc(s, index, encoding)
+end
+
 ---@param bufnr buffer
 ---@param position MarkPosition
 ---@param offset_encoding lsp.PositionEncodingKind
@@ -45,7 +51,7 @@ function M.make_position_params(bufnr, position, offset_encoding)
     return { line = 0, character = 0 }
   end
 
-  col = vim.lsp.util._str_utfindex_enc(line, col, offset_encoding)
+  col = str_utfindex(line, offset_encoding, col)
 
   return { line = row, character = col }
 end
