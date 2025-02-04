@@ -81,6 +81,61 @@ The `setup()` function takes a table with the followings keys:
     * NOTE: `"vscoq.path"`, `"vscoq.args"`, and `"vscoq.trace.server"` should be configured in the `lsp` table below.
 * `lsp`: The settings forwarded to `:help lspconfig-setup`.
 
+#### Coq configuration
+* `"lsp.path": ""`
+    -- specify the path to `vscoqtop` (e.g. `path/to/vscoq/bin/vscoqtop`)
+* `"lsp.args": []`
+    -- an array of strings specifying additional command line arguments for `vscoqtop` (typically accepts the same flags as `coqtop`)
+* `"lsp.trace.server": string` `"off" | "messages" | "verbose"`
+    -- Toggles the tracing of communications between the server and client
+
+#### Memory management (since >= vscoq 2.1.7)
+* `"vscoq.memory.limit: int`
+    -- specifies the memory limit (in Gb) over which when a user closes a tab, the corresponding document state is discarded in the server to free up memory.
+    Defaults to 4Gb.
+
+#### Goal and info view panel
+* `"vscoq.goals.display": string` `"Tabs" | "List"`
+    -- Decide whether to display goals in separate tabs or as a list of collapsibles.
+* `"vscoq.goals.diff.mode": string` `"on" | "off" | "removed"`
+    -- Toggles diff mode. If set to `removed`, only removed characters are shown (defaults to `off`)
+* `"vscoq.goals.messages.full": bool`
+    -- A toggle to include warnings and errors in the proof view (defaults to `false`)
+* `"vscoq.goals.maxDepth": int`
+    -- A setting to determine at which point the goal display starts elliding. Defaults to 17. (since version >= 2.1.7)
+
+#### Proof checking
+* `"vscoq.proof.mode": string` `"Continuous" | "Manual"`
+    -- Decide whether documents should checked continuously or using the classic navigation commmands (defaults to `Manual`)
+* `"vscoq.proof.pointInterpretationMode":` `"stringCursor" | "NextCommand"`
+    -- Determines the point to which the proof should be check to when using the 'Interpret to point' command.
+* `"vscoq.proof.cursor.sticky": bool`
+    -- a toggle to specify whether the cursor should move as Coq interactively navigates a document (step forward, backward, etc...)
+* `"vscoq.proof.delegation": string` `"None" | "Skip" | "Delegate"`
+    -- Decides which delegation strategy should be used by the server.
+  `Skip` allows to skip proofs which are out of focus and should be used in manual mode. `Delegate` allocates a settable amount of workers
+  to delegate proofs.
+* `"vscoq.proof.workers": int`
+    -- Determines how many workers should be used for proof checking
+* `"vscoq.proof.block": bool`
+    -- Determines if the the execution of a document should halt on first error.  Defaults to true (since version >= 2.1.7).
+* `"vscoq.proof.display-buttons": bool`
+    -- A toggle to control whether buttons related to Coq (step forward/back, reset, etc.) are displayed in the editor actions menu (defaults to `true`)
+
+#### Code completion (experimental)
+* `"vscoq.completion.enable": bool`
+    -- Toggle code completion (defaults to `false`)
+* `"vscoq.completion.algorithm": string` `"StructuredSplitUnification" | "SplitTypeIntersection"`
+    -- Which completion algorithm to use
+* `"vscoq.completion.unificationLimit": int`
+    -- Sets the limit for how many theorems unification is attempted
+
+#### Diagnostics
+* `"vscoq.diagnostics.full": bool`
+    -- Toggles the printing of `Info` level diagnostics (defaults to `false`)
+
+
+
 Example:
 ```lua
 require'vscoq'.setup {
