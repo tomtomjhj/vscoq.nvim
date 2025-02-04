@@ -79,52 +79,52 @@ The `setup()` function takes a table with the followings keys:
   This is used in both the client and the server.
 * `lsp`: The settings forwarded to `:help lspconfig-setup`.
 ### Coq configuration
-| Key | Type | Default value | Description |
-|-----|------|---------------|-------------|
-| `lsp.path` | `string` | `""` (automaticaly get `vscoqtop`) | specify the path to `vscoqtop` (e.g. `path/to/vscoq/bin/vscoqtop`) |
-|`lsp.args` | `array of string` | `[]` | an array of strings specifying additional command line arguments for `vscoqtop` (typically accepts the same flags as `coqtop`) |
-|`lsp.trace.server` | `"off" \| "messages" \| "verbose"` |  `"off"` | Toggles the tracing of communications between the server and client |
+| Key               | Type                               | Default value                      | Description                                                                                                                    |
+| ----------------- | ---------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `lsp.path`        | `string`                           | `""` (automaticaly get `vscoqtop`) | Specify the path to `vscoqtop` (e.g. `path/to/vscoq/bin/vscoqtop`)                                                             |
+|`lsp.args`         | `array of string`                  | `[]`                               | An array of strings specifying additional command line arguments for `vscoqtop` (typically accepts the same flags as `coqtop`) |
+|`lsp.trace.server` | `"off" \| "messages" \| "verbose"` |  `"off"`                           | Toggles the tracing of communications between the server and client                                                            |
 
 NOTE: On `vscoq` key `"vscoq.path"`, `"vscoq.args"`,
 and `"vscoq.trace.server"` should be configured in the `lsp` table below.
 
 ### Memory management (since >= vscoq 2.1.7)
 
-| Key | Type | Default value | Description |
-|-----|------|---------------|-------------|
-|`vscoq.memory.limit` | `int` | 4 | specifies the memory limit (in Gb) over which when a user closes a tab, the corresponding document state is discarded in the server to free up memory |
+| Key                 | Type  | Default value | Description                                                                                                                                           |
+| ------------------- | ----- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+|`vscoq.memory.limit` | `int` | 4             | specifies the memory limit (in Gb) over which when a user closes a tab, the corresponding document state is discarded in the server to free up memory |
 
 ### Goal and info view panel
 
-| Key | Type | Default value | Description |
-|-----|------|---------------|-------------|
-| `vscoq.goals.display` | `"Tabs" \| "List"` | `"List"` |Decide whether to display goals in separate tabs or as a list of collapsibles. |
-| `vscoq.goals.diff.mode` |  `"on" \| "off" \| "removed"` | `"off"` | Toggles diff mode. If set to `removed`, only removed characters are shown |
-| `vscoq.goals.messages.full`| `bool` | `false` | A toggle to include warnings and errors in the proof view |
-| `vscoq.goals.maxDepth` | `int` | `17` | A setting to determine at which point the goal display starts elliding (since version >= 2.1.7 of `vscoqtop`) |
+| Key                         | Type                         | Default value | Description                                                                                                   |
+| --------------------------- | ---------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------- |
+| `vscoq.goals.display`       | `"Tabs" \| "List"`           | `"List"`      | Decide whether to display goals in separate tabs or as a list of collapsibles.                                |
+| `vscoq.goals.diff.mode`     | `"on" \| "off" \| "removed"` | `"off"`       | Toggles diff mode. If set to `removed`, only removed characters are shown                                     |
+| `vscoq.goals.messages.full` | `bool`                       | `false`       | A toggle to include warnings and errors in the proof view                                                     |
+| `vscoq.goals.maxDepth`      | `int`                        | `17`          | A setting to determine at which point the goal display starts elliding (since version >= 2.1.7 of `vscoqtop`) |
 
 ### Proof checking
-| Key | Type | Default value | Description |
-|-----|------|---------------|-------------|
-| `vscoq.proof.mode` | `"Continuous" \| "Manual"` | `"Manual"` | Decide whether documents should checked continuously or using the classic navigation commmands (defaults to `Manual`) |
-| `vscoq.proof.pointInterpretationMode` | `"Cursor" | "NextCommand"` | `"Cursor"` | Determines the point to which the proof should be check to when using the 'Interpret to point' command |
-| `vscoq.proof.cursor.sticky` | `bool` | `true` | a toggle to specify whether the cursor should move as Coq interactively navigates a document (step forward, backward, etc...) |
-| `vscoq.proof.delegation"` | `"None" \| "Skip" \| "Delegate"` | `"None"` | Decides which delegation strategy should be used by the server. `Skip` allows to skip proofs which are out of focus and should be used in manual mode. `Delegate` allocates a settable amount of workers to delegate proofs |
-| `vscoq.proof.workers` | `int` | `1` | Determines how many workers should be used for proof checking |
-| `vscoq.proof.block` | `bool` | `true` | Determines if the the execution of a document should halt on first error (since version >= 2.1.7 of `vscoqtop`)
-|`vscoq.proof.display-buttons` | `bool` | `true` | A toggle to control whether buttons related to Coq (step forward/back, reset, etc.) are displayed in the editor actions menu |
+| Key                                   | Type                             | Default value | Description                                                                                                                                                                                                                 |
+| ------------------------------------- | -------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vscoq.proof.mode`                    | `"Continuous" \| "Manual"`       | `"Manual"`    | Decide whether documents should checked continuously or using the classic navigation commmands (defaults to `Manual`)                                                                                                       |
+| `vscoq.proof.pointInterpretationMode` | `"Cursor" \| "NextCommand"`      | `"Cursor"`    | Determines the point to which the proof should be check to when using the 'Interpret to point' command                                                                                                                      |
+| `vscoq.proof.cursor.sticky`           | `bool`                           | `true`        | A toggle to specify whether the cursor should move as Coq interactively navigates a document (step forward, backward, etc...)                                                                                               |
+| `vscoq.proof.delegation"`             | `"None" \| "Skip" \| "Delegate"` | `"None"`      | Decides which delegation strategy should be used by the server. `Skip` allows to skip proofs which are out of focus and should be used in manual mode. `Delegate` allocates a settable amount of workers to delegate proofs |
+| `vscoq.proof.workers`                 | `int`                            | `1`           | Determines how many workers should be used for proof checking                                                                                                                                                               |
+| `vscoq.proof.block`                   | `bool`                           | `true`        | Determines if the the execution of a document should halt on first error (since version >= 2.1.7 of `vscoqtop`)                                                                                                             |
+|`vscoq.proof.display-buttons`          | `bool`                           | `true`        | A toggle to control whether buttons related to Coq (step forward/back, reset, etc.) are displayed in the editor actions menu                                                                                                |
 
 ### Code completion (experimental)
-| Key | Type | Default value | Description |
-|-----|------|---------------|-------------|
-| `vscoq.completion.enable` | `bool` | `false` | Toggle code completion |
-| `vscoq.completion.algorithm` | `"StructuredSplitUnification" \| "SplitTypeIntersection"` | `"SplitTypeIntersection"`| Which completion algorithm to use
-| `vscoq.completion.unificationLimit` | `int` (minimum 0) | 100 | Sets the limit for how many theorems unification is attempted |
+| Key                                 | Type                                                      | Default value            | Description                                                   |
+| ----------------------------------- | --------------------------------------------------------- | ------------------------ | ------------------------------------------------------------- |
+| `vscoq.completion.enable`           | `bool`                                                    | `false`                  | Toggle code completion                                        |
+| `vscoq.completion.algorithm`        | `"StructuredSplitUnification" \| "SplitTypeIntersection"` | `"SplitTypeIntersection"`| Which completion algorithm to use                             |
+| `vscoq.completion.unificationLimit` | `int` (minimum 0)                                         | `100`                    | Sets the limit for how many theorems unification is attempted |
 
 ### Diagnostics
-| Key | Type | Default value | Description |
-|-----|------|---------------|-------------|
-| `vscoq.diagnostics.full` | `bool` | `false` | Toggles the printing of `Info` level diagnostics |
+| Key                      | Type   | Default value | Description                                      |
+| ------------------------ | ------ | ------------- | ------------------------------------------------ |
+| `vscoq.diagnostics.full` | `bool` | `false`       | Toggles the printing of `Info` level diagnostics |
 
 ### Example:
 ```lua
