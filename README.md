@@ -6,6 +6,7 @@ A Neovim client for [VsCoq 2 `vscoqtop`](https://github.com/coq-community/vscoq)
 * [`vscoqtop`](https://github.com/coq-community/vscoq#installing-the-language-server)
 
 ## Setup
+### [vim-plug](https://github.com/junegunn/vim-plug)
 ```vim
 Plug 'neovim/nvim-lspconfig'
 Plug 'whonore/Coqtail' " for ftdetect, syntax, basic ftplugin, etc
@@ -19,6 +20,29 @@ let g:coqtail#supported = 0
 
 " Setup vscoq.nvim
 lua require'vscoq'.setup()
+```
+
+### [lazy.nvim](https://github.com/folke/lazy.nvim)
+```lua
+{
+  'whonore/Coqtail',
+  init = function()
+      vim.g.loaded_coqtail = 1
+      vim.g["coqtail#supported"] = 0
+  end,
+},
+{
+  'tomtomjhj/vscoq.nvim',
+  filetypes = 'coq',
+  dependecies = {
+    'neovim/nvim-lspconfig',
+    'whonore/Coqtail',
+  },
+  opts = {
+    vscoq = { ... }
+    lsp = { ... }
+  },
+},
 ```
 
 ## Interface
