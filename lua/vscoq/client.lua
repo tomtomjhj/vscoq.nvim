@@ -107,7 +107,8 @@ commands[#commands + 1] = 'jumpToEnd'
 function VSCoqNvim:moveCursor(target)
   local bufnr = vim.uri_to_bufnr(target.uri)
   local wins = vim.fn.win_findbuf(bufnr) or {}
-  if self.vscoq.proof.mode == "Manual" and self.vscoq.proof.cursor.sticky then
+  if self.vscoq.proof.mode == 0 and self.vscoq.proof.cursor.sticky then
+    -- Manual mod and sticky
     local position = util.position_api_to_mark(
       util.position_lsp_to_api(bufnr, target.range['end'], self.lc.offset_encoding)
     )
@@ -406,7 +407,8 @@ end
 commands[#commands + 1] = 'resetCoq'
 
 function VSCoqNvim:on_CursorMoved()
-  if self.vscoq.proof.mode == "NextCommand" then
+  -- Continuous mod
+  if self.vscoq.proof.mode == 1 then
     -- TODO: debounce_timer
     assert(self:interpretToPoint())
   end
@@ -454,7 +456,8 @@ function VSCoqNvim:attach(bufnr)
     end,
   })
 
-  if self.vscoq.proof.mode == "NextCommand" then
+  -- Continuous mod
+  if self.vscoq.proof.mode == 1 then
     self:interpretToPoint(bufnr)
   end
 end
