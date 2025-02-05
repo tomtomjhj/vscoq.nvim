@@ -1,6 +1,7 @@
 local util = require('vscoq.util')
 local pp = require('vscoq.pp')
 local render = require('vscoq.render')
+local config = require('vscoq.config')
 
 ---@class VSCoqNvim
 ---@field lc vim.lsp.Client
@@ -47,17 +48,17 @@ function VSCoqNvim:new(client)
 end
 
 ---change config and send notification
----@param new_config vscoq.Config
+---@param new_config vscoq.LspConfig
 function VSCoqNvim:update_config(new_config)
   self.vscoq = vim.tbl_deep_extend('force', self.vscoq, new_config)
   self.lc.notify('workspace/didChangeConfiguration', { settings = self.vscoq })
 end
 
 function VSCoqNvim:manual()
-  self:update_config { proof = { mode = "Manual" } }
+  self:update_config { proof = { mode = 0 } }
 end
 function VSCoqNvim:continuous()
-  self:update_config { proof = { mode = "Continuous" } }
+  self:update_config { proof = { mode = 1 } }
   self:interpretToPoint()
 end
 commands[#commands + 1] = 'manual'

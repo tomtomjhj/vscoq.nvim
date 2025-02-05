@@ -11,6 +11,99 @@
 
 -- # Configuration
 
+---@class vscoq.Config
+---@field memory vscoq.Config.Memory
+---@field goals vscoq.Config.Goals
+---@field proof vscoq.Config.Proof
+---@field completion vscoq.Config.Completion
+---@field diagnostics vscoq.Config.Diagnostics
+
+---@class vscoq.Config.Memory
+---@field limit integer
+
+---@class vscoq.Config.Goals
+---@field display "Tabs"|"List"
+---@field diff vscoq.Config.Goals.Diff
+---@field messages vscoq.Config.Goals.Messages
+---@field maxDepth integer
+
+---@class vscoq.Config.Goals.Diff
+---@field mode "off"|"on"|"removed"
+
+---@class vscoq.Config.Goals.Messages
+---@field full boolean
+
+---@class vscoq.Config.Proof
+---@field mode "Manual"|"Continuous"
+---@field pointInterpretationMode "Cursor"|"NextCommand"
+---@field cursor vscoq.Config.Proof.Cursor
+---@field delegation "None"|"Skip"|"Delegate"
+---@field workers integer
+
+---@class vscoq.Config.Proof.Cursor
+---@field sticky boolean
+
+---@class vscoq.Config.Completion
+---@field enable boolean
+---@field unificationLimit integer
+---@field algorithm "StructuredSplitUnification"|"SplitTypeIntersection"
+
+---@class vscoq.Config.Diagnostics
+---@field full boolean
+
+-- ## Lsp config
+
+---@class vscoq.LspConfig
+---@field memory vscoq.LspConfig.Memory
+---@field goals vscoq.LspConfig.Goals
+---@field proof vscoq.LspConfig.Proof
+---@field completion vscoq.LspConfig.Completion
+---@field diagnostics vscoq.LspConfig.Diagnostics
+
+---@class vscoq.LspConfig.Memory
+---@field limit integer
+
+---@class vscoq.LspConfig.Goals
+---@field display "Tabs"|"List"
+---@field diff vscoq.LspConfig.Goals.Diff
+---@field messages vscoq.LspConfig.Goals.Messages
+---@field maxDepth integer
+
+---@class vscoq.LspConfig.Goals.Diff
+---@field mode "off"|"on"|"removed"
+
+---@class vscoq.LspConfig.Goals.Messages
+---@field full boolean
+
+---@class vscoq.LspConfig.Proof
+---@field mode
+  ---@enum
+  ---|0 # Manual
+  ---|1 # Continuous
+---@field pointInterpretationMode
+  ---@enum
+  ---|0 # Cursor
+  ---|1 # NextCommand
+---@field cursor vscoq.LspConfig.Proof.Cursor
+---@field delegation "None"|"Skip"|"Delegate"
+---@field workers integer
+
+---@class vscoq.LspConfig.Proof.Cursor
+---@field sticky boolean
+
+---@class vscoq.LspConfig.Completion
+---@field enable boolean
+---@field unificationLimit integer
+---@field algorithm
+  ---@enum
+  --|0 # StructuredSplitUnification
+  --|1 # SplitTypeIntersection
+
+---@class vscoq.LspConfig.Diagnostics
+---@field full boolean
+
+
+
 -- # Highlights
 
 ---"vscoq/UpdateHighlights" notification (server → client) parameter.

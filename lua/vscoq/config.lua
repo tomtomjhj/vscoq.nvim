@@ -1,50 +1,37 @@
 local Config = {}
 
----@class vscoq.Config
+---@type vscoq.Config
 Config.default = {
   memory = {
-    ---@type integer
     limit = 4,
   },
   goals = {
     -- used for initAppSettings
-    ---@type "Tabs"|"List"
     display = 'List',
     diff = {
-      ---@type "off"|"on"|"removed"
       mode = 'off',
     },
     messages = {
-      ---@type boolean
       full = true,
     },
     maxDepth = 17,
   },
   proof = {
-    ---@type "Manual"|"Continuous"
     mode = 'Manual',
-    ---@type "Cursor"|"NextCommand"
     pointInterpretationMode = 'Cursor',
     cursor = {
-      ---@type boolean
       sticky = true,
     },
-    ---@type "None"|"Skip"|"Delegate"
     delegation = 'None',
-    ---@type integer
     workers = 1,
     block = true,
   },
   completion = {
-    ---@type boolean
     enable = false,
-    ---@type integer
     unificationLimit = 100,
-    ---@type "StructuredSplitUnification" | "SplitTypeIntersection"
     algorithm = 'SplitTypeIntersection',
   },
   diagnostics = {
-    ---@type boolean
     full = false,
   },
 }
@@ -146,14 +133,24 @@ local completion_algorithm_table = {
 }
 
 ---@param opts_vscoq vscoq.Config
----@return table<string,any>
-function Config.make_lsp_init_options(opts_vscoq)
-  local init_options = vim.deepcopy(opts_vscoq)
-  init_options.proof.mode = proof_mode_table[init_options.proof.mode]
-  init_options.proof.pointInterpretationMode =
-    proof_pointInterpretationMode_table[init_options.proof.pointInterpretationMode]
-  init_options.completion.algorithm = completion_algorithm_table[init_options.completion.algorithm]
-  return init_options
+---@return vscoq.LspConfig
+function Config.make_lsp_options(opts_vscoq)
+  local opts = vim.deepcopy(opts_vscoq)
+
+  if opts.proof and opts.proof.mode then
+    opts.proof.mode = proof_mode_table[opts.proof.mode]
+  end
+
+  if opts.proof and opts.proof.pointInterpretationMode then
+    opts.proof.pointInterpretationMode =
+      proof_pointInterpretationMode_table[opts.proof.pointInterpretationMode]
+  end
+
+  if opts.completion and opts.completion.algorithm then
+    opts.completion.algorithm = completion_algorithm_table[opts.completion.algorithm]
+  end
+
+  return opts
 end
 
 return Config

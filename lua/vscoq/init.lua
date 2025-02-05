@@ -104,7 +104,7 @@ function M.setup(opts)
     opts.lsp.init_options == nil and opts.lsp.settings == nil,
     "[vscoq.nvim] settings must be passed via 'vscoq' field"
   )
-  opts.lsp.init_options = config.make_lsp_init_options(opts.vscoq)
+  opts.lsp.init_options = config.make_lsp_options(opts.vscoq)
   require('lspconfig').vscoqtop.setup(opts.lsp)
 end
 
