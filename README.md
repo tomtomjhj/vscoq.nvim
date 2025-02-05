@@ -86,7 +86,7 @@ The `setup()` function takes a table with the followings keys:
 |`lsp.trace.server` | `"off" \| "messages" \| "verbose"` |  `"off"`                           | Toggles the tracing of communications between the server and client                                                            |
 
 NOTE: On `vscoq` key `"vscoq.path"`, `"vscoq.args"`,
-and `"vscoq.trace.server"` should be configured in the `lsp` table below.
+and `"vscoq.trace.server"` should be configured in the `lsp` table.
 
 ### Memory management (since >= vscoq 2.1.7)
 
@@ -112,7 +112,6 @@ and `"vscoq.trace.server"` should be configured in the `lsp` table below.
 | `vscoq.proof.delegation"`             | `"None" \| "Skip" \| "Delegate"` | `"None"`      | Decides which delegation strategy should be used by the server. `Skip` allows to skip proofs which are out of focus and should be used in manual mode. `Delegate` allocates a settable amount of workers to delegate proofs |
 | `vscoq.proof.workers`                 | `int`                            | `1`           | Determines how many workers should be used for proof checking                                                                                                                                                               |
 | `vscoq.proof.block`                   | `bool`                           | `true`        | Determines if the the execution of a document should halt on first error (since version >= 2.1.7 of `vscoqtop`)                                                                                                             |
-|`vscoq.proof.display-buttons`          | `bool`                           | `true`        | A toggle to control whether buttons related to Coq (step forward/back, reset, etc.) are displayed in the editor actions menu                                                                                                |
 
 ### Code completion (experimental)
 | Key                                 | Type                                                      | Default value            | Description                                                   |
