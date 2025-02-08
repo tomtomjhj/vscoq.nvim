@@ -2,14 +2,18 @@ local util = require('vscoq.util')
 local pp = require('vscoq.pp')
 local render = require('vscoq.render')
 
----@class VSCoqNvim
----@field lc vim.lsp.Client
----@field vscoq vscoq.Config the current configuration
+---@class vscoq.Buffer
+---@field highlights? vscoq.UpdateHighlightsNotification
 -- TODO: Since proofView notification doesn't send which document it is for,
 -- for now we have a single proofview panel.
 -- Once fixed, make config for single/multi proofview.
--- ---@field buffers table<buffer, { proofview_bufnr: buffer }>
----@field buffers table<buffer, { highlights: vscoq.UpdateHighlightsNotification }>
+-- ---@field proofview_bufnr buffer
+
+---@class VSCoqNvim
+---@field lc vim.lsp.Client
+-- TODO: from 0.11, client functions can be called as methods
+---@field vscoq vscoq.Config the current configuration
+---@field buffers table<buffer, vscoq.Buffer>
 ---@field proofview_panel buffer
 ---@field proofview_content? vscoq.ProofViewNotification
 ---@field query_panel buffer
@@ -24,6 +28,7 @@ VSCoqNvim.__index = VSCoqNvim
 ---@type string[] command names
 local commands = {}
 
+-- TODO: don't use method for this. "self" is confusing.
 ---@param client vim.lsp.Client
 ---@return VSCoqNvim
 function VSCoqNvim:new(client)
@@ -43,7 +48,39 @@ function VSCoqNvim:new(client)
   setmetatable(new, self)
   new:ensure_proofview_panel()
   new:ensure_query_panel()
+
+  vim.api.nvim_create_autocmd('WinResized', {
+    group = new.ag,
+    pattern = '*',
+    desc = 'Resize proofview width',
+    callback = function(ev)
+      -- TODO: redraw proofview when it's resized
+      -- vim.print(vim.v.event)
+    end,
+  })
+
   return new
+end
+
+function VSCoqNvim:_panel_width(buf)
+  if true then
+    return 78
+  end
+  -- TODO: configure max width?
+  local width = 120
+  for _, win in ipairs(vim.fn.win_findbuf(buf) or {}) do
+    -- note: There is no simple way to get the width of the text area in a window, so just guess.
+    width = math.min(width, math.max(80, vim.fn.winwidth(win) - 10))
+  end
+  return width
+end
+
+function VSCoqNvim:_proofView_panel_width()
+  return self:_panel_width(self.proofview_panel)
+end
+
+function VSCoqNvim:_query_panel_width()
+  return self:_panel_width(self.query_panel)
 end
 
 ---change config and send notification
@@ -63,11 +100,28 @@ end
 commands[#commands + 1] = 'manual'
 commands[#commands + 1] = 'continuous'
 
+function VSCoqNvim:diff()
+  self:update_config { goals = { diff = { mode = 'on' } } }
+end
+commands[#commands + 1] = 'diff'
+
+--- TODO: `:VsCoq config vscoq.proof.mode 1`.
+--- * Need config-type mapping for value parsing.
+---@param name string
+---@param value any
+function VSCoqNvim:config(name, value)
+  --
+end
+
 ---@param highlights vscoq.UpdateHighlightsNotification
 function VSCoqNvim:updateHighlights(highlights)
   local bufnr = vim.uri_to_bufnr(highlights.uri)
   vim.api.nvim_buf_clear_namespace(bufnr, self.highlight_ns, 0, -1)
+  if not self.buffers[bufnr] then
+    print('updateHighlights nil:', bufnr, highlights.uri, vim.inspect(self))
+  end
   self.buffers[bufnr].highlights = highlights
+  -- TODO: config: hl_eol for nvim_buf_set_extmark
   -- for _, range in ipairs(highlights.processingRange) do
   for _, range in ipairs(highlights.processedRange) do
     vim.highlight.range(
@@ -122,6 +176,30 @@ function VSCoqNvim:proofView(proofView)
   self:show_proofView { 'goals', 'messages' }
 end
 
+-- NOTE: this highlights are worse than Coqtail's
+vim.cmd([[
+hi def link coq_message_error DiagnosticError
+hi def link coq_message_warning DiagnosticWarn
+hi def link coq_message_debug DiagnosticInfo
+hi def link coq_message_prompt DiagnosticHint
+hi def link coq_constr_evar @variable.parameter
+hi def link coq_constr_keyword @keyword
+hi def link coq_constr_type @type
+" hi def link coq_constr_notation
+hi def link coq_constr_reference @variable.member
+hi def link coq_constr_path @module
+hi def link coq_constr_variable @variable
+" hi def link coq_module_definition
+hi def link coq_module_keyword @keyword.import
+" hi def link coq_tactic_keyword
+" hi def link coq_tactic_primitive
+" hi def link coq_tactic_string
+" hi def link coq_diff_added
+" hi def link coq_diff_removed
+" hi def link coq_diff_added_bg
+" hi def link coq_diff_removed_bg
+]])
+
 ---@param items ('goals'|'messages'|'shelvedGoals'|'givenUpGoals')[]
 function VSCoqNvim:show_proofView(items)
   assert(self.proofview_content)
@@ -129,6 +207,12 @@ function VSCoqNvim:show_proofView(items)
   self:ensure_proofview_panel()
 
   -- TODO: smarter view? relative position? always focus on the first goal?
+  -- * By default,
+  --   * if single goal: show the end of content at the bottom line.
+  --     * consider messages
+  --   * multiple goals:
+  -- * But if the cursor has moved from a default location, preserve the view?
+  -- * Locate the cursor position in pp structure, and try to restore cursor to that pp?
   local wins = {} ---@type table<window, vim.fn.winsaveview.ret>
   for _, win in ipairs(vim.fn.win_findbuf(self.proofview_panel) or {}) do
     vim.api.nvim_win_call(win, function()
@@ -136,8 +220,17 @@ function VSCoqNvim:show_proofView(items)
     end)
   end
 
-  local tl = render.proofView(self.proofview_content, items)
+  local tl = render.proofView(self.proofview_content, items, self:_proofView_panel_width())
   vim.api.nvim_buf_set_lines(self.proofview_panel, 0, -1, false, tl[1])
+
+  vim.api.nvim_buf_clear_namespace(self.proofview_panel, self.tag_ns, 0, -1)
+  for _, tag in ipairs(tl[2]) do
+    vim.api.nvim_buf_set_extmark(self.proofview_panel, self.tag_ns, tag[1], tag[2], {
+      end_row = tag[3],
+      end_col = tag[4],
+      hl_group = 'coq_' .. tag[0]:gsub('[.]', '_'),
+    })
+  end
 
   self:ensure_query_panel()
   if #self.proofview_content.messages > 0 then
@@ -188,7 +281,7 @@ commands[#commands + 1] = 'shelved'
 commands[#commands + 1] = 'admitted'
 commands[#commands + 1] = 'goals'
 
--- TODO: commands in panels
+-- TODO: commands in panels. Use the last coq buffer.
 function VSCoqNvim:ensure_proofview_panel()
   if vim.api.nvim_buf_is_valid(self.proofview_panel) then
     if not vim.api.nvim_buf_is_loaded(self.proofview_panel) then
@@ -197,7 +290,7 @@ function VSCoqNvim:ensure_proofview_panel()
     return
   end
   self.proofview_panel = vim.api.nvim_create_buf(false, true)
-  vim.bo[self.proofview_panel].filetype = 'coq-goals'
+  -- vim.bo[self.proofview_panel].filetype = 'coq-goals'
 end
 
 function VSCoqNvim:ensure_query_panel()

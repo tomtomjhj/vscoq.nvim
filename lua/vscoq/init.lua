@@ -154,4 +154,6 @@ function M.setup(opts)
   require('lspconfig').vscoqtop.setup(opts.lsp)
 end
 
+-- TODO: config for proofview_panel and query_panel. pass client
+
 return M

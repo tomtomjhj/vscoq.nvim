@@ -6,23 +6,25 @@ local TaggedLines = require('vscoq.tagged_lines')
 ---@param goal vscoq.Goal
 ---@param i integer
 ---@param n integer
+---@param line_size? integer
 ---@return vscoq.TaggedLines
-function M.goal(i, n, goal)
+function M.goal(i, n, goal, line_size)
   local tl = TaggedLines.new()
   tl:add_line(string.format('Goal %d (%d / %d)', goal.id, i, n))
   for _, hyp in ipairs(goal.hypotheses) do
-    tl:append(pp(hyp))
+    tl:append(pp(hyp, line_size))
   end
   tl:add_line('')
   tl:add_line('========================================')
   tl:add_line('')
-  tl:append(pp(goal.goal))
+  tl:append(pp(goal.goal, line_size))
   return tl
 end
 
 ---@param goals vscoq.Goal[]
+---@param line_size? integer
 ---@return string[]
-function M.goals(goals)
+function M.goals(goals, line_size)
   local tl = TaggedLines.new()
   for i, goal in ipairs(goals) do
     if i > 1 then
@@ -33,7 +35,7 @@ function M.goals(goals)
       )
       tl:add_line('')
     end
-    tl:append(M.goal(i, #goals, goal))
+    tl:append(M.goal(i, #goals, goal, line_size))
   end
   return tl
 end
@@ -64,8 +66,9 @@ end
 
 ---@param proofView vscoq.ProofViewNotification
 ---@param items ('goals'|'messages'|'shelvedGoals'|'givenUpGoals')[]
+---@param line_size? integer
 ---@return vscoq.TaggedLines
-function M.proofView(proofView, items)
+function M.proofView(proofView, items, line_size)
   local tl = TaggedLines.new()
 
   if proofView.proof then
@@ -94,7 +97,7 @@ function M.proofView(proofView, items)
     if proofView.proof then
       if item == 'goals' then
         if #proofView.proof.goals > 0 then
-          tl:append(M.goals(proofView.proof.goals))
+          tl:append(M.goals(proofView.proof.goals, line_size))
         elseif #proofView.proof.unfocusedGoals > 0 then
           tl:add_line('This subproof is complete.')
           tl:add_line('')
@@ -102,7 +105,7 @@ function M.proofView(proofView, items)
             'Next unfocused subgoals ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
           )
           tl:add_line('')
-          tl:append(M.goals(proofView.proof.unfocusedGoals))
+          tl:append(M.goals(proofView.proof.unfocusedGoals, line_size))
         elseif #proofView.proof.givenUpGoals > 0 then
           tl:add_line('No more subgoals, but there are some admitted subgoals.')
           tl:add_line('Go back and solve them, or use `Admitted.`')
@@ -117,14 +120,14 @@ function M.proofView(proofView, items)
           'Shelved ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
         )
         tl:add_line('')
-        tl:append(M.goals(proofView.proof.shelvedGoals))
+        tl:append(M.goals(proofView.proof.shelvedGoals, line_size))
       elseif item == 'givenUpGoals' then
         padding()
         tl:add_line(
           'Given Up ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
         )
         tl:add_line('')
-        tl:append(M.goals(proofView.proof.givenUpGoals))
+        tl:append(M.goals(proofView.proof.givenUpGoals, line_size))
       end
     end
   end

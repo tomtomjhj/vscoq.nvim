@@ -71,8 +71,8 @@ local function PpString_iter(pp_root)
   return iter
 end
 
--- TODO: use window width. should take account of columns
-local LINE_SIZE = 80
+local DEFAULT_LINE_SIZE = 80
+local MAX_LINE_SIZE = 200
 
 ---Populates the `size` field in each PpString.
 ---The defintion of size follows the Oppen's algorithm.
@@ -106,7 +106,7 @@ local function PpString_compute_sizes(pp_root)
         pp.size = pp[2]
       elseif pp[1] == 'Ppcmd_force_newline' then
         ---@cast pp vscoq.PpString.Ppcmd_force_newline
-        pp.size = LINE_SIZE
+        pp.size = MAX_LINE_SIZE
       elseif pp[1] == 'Ppcmd_comment' then
         ---@cast pp vscoq.PpString.Ppcmd_comment
         pp.size = 0
@@ -141,8 +141,12 @@ end
 
 ---@param pp_root vscoq.PpString
 ---@return vscoq.TaggedLines
-local function PpString(pp_root)
+---@param line_size? integer
+local function PpString(pp_root, line_size)
+  line_size = line_size or DEFAULT_LINE_SIZE
+
   if not pp_root.size then
+    X = vim.deepcopy(pp_root)
     PpString_compute_sizes(pp_root)
   end
 
@@ -183,7 +187,7 @@ local function PpString(pp_root)
         elseif pp[2][1] == 'Pp_vbox' then
           mode = 2
         elseif pp[2][1] == 'Pp_hvbox' then
-          mode = cursor + pp.size > LINE_SIZE and 2 or 0
+          mode = cursor + pp.size > line_size and 2 or 0
         elseif pp[2][1] == 'Pp_hovbox' then
           mode = 1
         end
@@ -196,7 +200,7 @@ local function PpString(pp_root)
         -- NOTE: CoqMessage contains breaks without enclosing box.
         -- This behaves like regular text wrapping.
         local top = #box_stack > 0 and box_stack[#box_stack] or { mode = 1, indent = 0 }
-        if top.mode > 0 and (cursor + pp.size > LINE_SIZE or top.mode == 2) then
+        if top.mode > 0 and (cursor + pp.size > line_size or top.mode == 2) then
           cursor = top.indent + pp[3]
           cursor_byte = cursor
           lines[#lines + 1] = table.concat(cur_line)
