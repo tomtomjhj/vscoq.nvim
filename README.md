@@ -77,22 +77,26 @@ lua require'vscoq'.setup()
 The `setup()` function takes a table with the followings keys:
 * `vscoq`: Settings specific to VsCoq.
   This is used in both the client and the server.
-* `lsp`: The settings forwarded to `:help lspconfig-setup`.
-### Coq configuration
-| Key               | Type                               | Default value                      | Description                                                                                                                    |
-| ----------------- | ---------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `lsp.path`        | `string`                           | `""` (automaticaly get `vscoqtop`) | Specify the path to `vscoqtop` (e.g. `path/to/vscoq/bin/vscoqtop`)                                                             |
-|`lsp.args`         | `array of string`                  | `[]`                               | An array of strings specifying additional command line arguments for `vscoqtop` (typically accepts the same flags as `coqtop`) |
-|`lsp.trace.server` | `"off" \| "messages" \| "verbose"` |  `"off"`                           | Toggles the tracing of communications between the server and client                                                            |
+  TODO: put back reference to vscoq package.json (not necessarily here) as the ground truth.
+* `lsp`: The settings forwarded to `:help lspconfig-setup`. `:help vim.lsp.ClientConfig`.
 
-NOTE: On `vscoq` key `"vscoq.path"`, `"vscoq.args"`,
-and `"vscoq.trace.server"` should be configured in the `lsp` table.
+### Basic LSP configuration
+
+TODO: vscoq package.json configs that should be configured a nvim's lsp configuration (`:help vim.lsp.ClientConfig`)
+* `"vscoq.path"` and `"vscoq.args"` → `lsp.cmd`
+* `"vscoq.trace.server"` → `lsp.trace`
+
+| Key                | Type                               | Default value                      | Description                                                                                                                    |
+| ------------------ | ---------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `lsp.cmd`         | `string`                           | `""` (automaticaly get `vscoqtop`) | Specify the path to `vscoqtop` (e.g. `path/to/vscoq/bin/vscoqtop`)                                                             |
+| `lsp.args`         | `array of string`                  | `[]`                               | An array of strings specifying additional command line arguments for `vscoqtop` (typically accepts the same flags as `coqtop`) |
+| `lsp.trace.server` | `"off" \| "messages" \| "verbose"` | `"off"`                            | Toggles the tracing of communications between the server and client                                                            |
 
 ### Memory management (since >= vscoq 2.1.7)
 
-| Key                 | Type  | Default value | Description                                                                                                                                           |
-| ------------------- | ----- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-|`vscoq.memory.limit` | `int` | 4             | specifies the memory limit (in Gb) over which when a user closes a tab, the corresponding document state is discarded in the server to free up memory |
+| Key                  | Type  | Default value | Description                                                                                                                                           |
+| -------------------- | ----- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vscoq.memory.limit` | `int` | 4             | specifies the memory limit (in Gb) over which when a user closes a tab, the corresponding document state is discarded in the server to free up memory |
 
 ### Goal and info view panel
 

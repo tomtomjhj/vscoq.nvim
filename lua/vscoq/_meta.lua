@@ -52,6 +52,7 @@
 ---@field full boolean
 
 -- ## Lsp config
+-- TODO: mention that we need a separate type for this becauase this is what's actually sent to the server
 
 ---@class vscoq.LspConfig
 ---@field memory vscoq.LspConfig.Memory
@@ -76,6 +77,7 @@
 ---@field full boolean
 
 ---@class vscoq.LspConfig.Proof
+-- TODO: lua_ls says "<type name> expected. [luadoc-miss-type-name]"
 ---@field mode
   ---@enum
   ---|0 # Manual

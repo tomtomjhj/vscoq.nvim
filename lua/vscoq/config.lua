@@ -36,10 +36,12 @@ Config.default = {
   },
 }
 
+-- TODO: @param, not @parameter
 ---@paramter value any
 ---@paramter type_expected string
 ---@paramter key_name string
 ---@return boolean
+-- TODO: use :h vim.validate?
 local function check_type(type_expected, value, key_name)
   local type_value = type(value)
   if type_value == type_expected then
@@ -51,6 +53,7 @@ local function check_type(type_expected, value, key_name)
       type_value,
       type_expected
     )
+    -- TODO: remove prints
     print(msg)
     return false
   end
@@ -74,6 +77,7 @@ local function check_values(list_expected, value, key_name)
   return false
 end
 
+-- TODO: I think these *_keys tables are not necessary if check_values uses *_table tables
 local goal_display_keys = { 'Tabs', 'List' }
 local goal_diff_keys = { 'off', 'on', 'removed' }
 local proof_mode_keys = { 'Manual', 'Continuous' }

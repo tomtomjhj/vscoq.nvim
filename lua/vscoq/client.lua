@@ -49,6 +49,7 @@ end
 
 ---change config and send notification
 ---@param new_config vscoq.LspConfig
+-- TODO: why not take vscoq.Config take use make_lsp_options?
 function VSCoqNvim:update_config(new_config)
   self.vscoq = vim.tbl_deep_extend('force', self.vscoq, new_config)
   self.lc.notify('workspace/didChangeConfiguration', { settings = self.vscoq })
