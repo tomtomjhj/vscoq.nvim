@@ -1,11 +1,10 @@
 local util = require('vscoq.util')
 local pp = require('vscoq.pp')
 local render = require('vscoq.render')
-local config = require('vscoq.config')
 
 ---@class VSCoqNvim
 ---@field lc vim.lsp.Client
----@field vscoq vscoq.Config the current configuration
+---@field config vscoq.Config the current configuration
 -- TODO: Since proofView notification doesn't send which document it is for,
 -- for now we have a single proofview panel.
 -- Once fixed, make config for single/multi proofview.
@@ -26,12 +25,12 @@ VSCoqNvim.__index = VSCoqNvim
 local commands = {}
 
 ---@param client vim.lsp.Client
+---@param config vscoq.Config
 ---@return VSCoqNvim
-function VSCoqNvim:new(client)
-  ---@type VSCoqNvim
+function VSCoqNvim:new(client, config)
   local new = {
     lc = client,
-    vscoq = client.config.init_options and vim.deepcopy(client.config.init_options) or {},
+    config = vim.deepcopy(config),
     buffers = {},
     proofview_panel = -1,
     query_panel = -1,
@@ -41,6 +40,7 @@ function VSCoqNvim:new(client)
     tag_ns = vim.api.nvim_create_namespace('vscoq-tag-' .. client.id),
     ag = vim.api.nvim_create_augroup('vscoq-' .. client.id, { clear = true }),
   }
+  vim.notify('VsCoq client created', vim.log.levels.INFO)
   setmetatable(new, self)
   new:ensure_proofview_panel()
   new:ensure_query_panel()
@@ -48,19 +48,17 @@ function VSCoqNvim:new(client)
 end
 
 ---change config and send notification
----@param new_config vscoq.LspConfig
--- TODO: why not take vscoq.Config take use make_lsp_options?
-function VSCoqNvim:update_config(new_config)
-  self.vscoq = vim.tbl_deep_extend('force', self.vscoq, new_config)
-  self.lc.notify('workspace/didChangeConfiguration', { settings = self.vscoq })
+function VSCoqNvim:update_lsp_config()
+  self.lc.notify('workspace/didChangeConfiguration', { settings = self.config:to_lsp_options() })
 end
 
 function VSCoqNvim:manual()
-  self:update_config { proof = { mode = 0 } }
+  self.config.proof.mode = 'Manual'
+  self:update_lsp_config()
 end
 function VSCoqNvim:continuous()
-  self:update_config { proof = { mode = 1 } }
-  self:interpretToPoint()
+  self.config.proof.mode = 'Continuous'
+  self:update_lsp_config()
 end
 commands[#commands + 1] = 'manual'
 commands[#commands + 1] = 'continuous'
@@ -108,7 +106,7 @@ commands[#commands + 1] = 'jumpToEnd'
 function VSCoqNvim:moveCursor(target)
   local bufnr = vim.uri_to_bufnr(target.uri)
   local wins = vim.fn.win_findbuf(bufnr) or {}
-  if self.vscoq.proof.mode == 0 and self.vscoq.proof.cursor.sticky then
+  if self.config.proof.mode == 'Manual' and self.config.proof.cursor.sticky then
     -- Manual mod and sticky
     local position = util.position_api_to_mark(
       util.position_lsp_to_api(bufnr, target.range['end'], self.lc.offset_encoding)
@@ -409,7 +407,7 @@ commands[#commands + 1] = 'resetCoq'
 
 function VSCoqNvim:on_CursorMoved()
   -- Continuous mod
-  if self.vscoq.proof.mode == 1 then
+  if self.config.proof.mode == 'Continuous' then
     -- TODO: debounce_timer
     assert(self:interpretToPoint())
   end
@@ -457,8 +455,7 @@ function VSCoqNvim:attach(bufnr)
     end,
   })
 
-  -- Continuous mod
-  if self.vscoq.proof.mode == 1 then
+  if self.config.proof.mode == 'Continuous' then
     self:interpretToPoint(bufnr)
   end
 end
