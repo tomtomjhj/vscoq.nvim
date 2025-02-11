@@ -77,20 +77,19 @@ lua require'vscoq'.setup()
 The `setup()` function takes a table with the followings keys:
 * `vscoq`: Settings specific to VsCoq.
   This is used in both the client and the server.
-  TODO: put back reference to vscoq package.json (not necessarily here) as the ground truth.
+  See the `"configuration"` key in vscoq [`package.json`](https://github.com/coq-community/vscoq/blob/main/client/package.json).
 * `lsp`: The settings forwarded to `:help lspconfig-setup`. `:help vim.lsp.ClientConfig`.
 
 ### Basic LSP configuration
 
-TODO: vscoq package.json configs that should be configured a nvim's lsp configuration (`:help vim.lsp.ClientConfig`)
+In vscoq [package.json](https://github.com/coq-community/vscoq/blob/main/client/package.json) should be configured as nvim's `lsp` configuration
 * `"vscoq.path"` and `"vscoq.args"` → `lsp.cmd`
 * `"vscoq.trace.server"` → `lsp.trace`
 
 | Key                | Type                               | Default value                      | Description                                                                                                                    |
 | ------------------ | ---------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `lsp.cmd`         | `string`                           | `""` (automaticaly get `vscoqtop`) | Specify the path to `vscoqtop` (e.g. `path/to/vscoq/bin/vscoqtop`)                                                             |
-| `lsp.args`         | `array of string`                  | `[]`                               | An array of strings specifying additional command line arguments for `vscoqtop` (typically accepts the same flags as `coqtop`) |
-| `lsp.trace.server` | `"off" \| "messages" \| "verbose"` | `"off"`                            | Toggles the tracing of communications between the server and client                                                            |
+| `lsp.cmd`          | `string`                           | `""` (automaticaly get `vscoqtop`)  | Specify the path to `vscoqtop` (e.g. `path/to/vscoq/bin/vscoqtop`) and arguments passed                                        |
+| `lsp.trace`        | `"off" \| "messages" \| "verbose"` | `"off"`                            | Toggles the tracing of communications between the server and client                                                            |
 
 ### Memory management (since >= vscoq 2.1.7)
 
@@ -113,7 +112,7 @@ TODO: vscoq package.json configs that should be configured a nvim's lsp configur
 | `vscoq.proof.mode`                    | `"Continuous" \| "Manual"`       | `"Manual"`    | Decide whether documents should checked continuously or using the classic navigation commmands (defaults to `Manual`)                                                                                                       |
 | `vscoq.proof.pointInterpretationMode` | `"Cursor" \| "NextCommand"`      | `"Cursor"`    | Determines the point to which the proof should be check to when using the 'Interpret to point' command                                                                                                                      |
 | `vscoq.proof.cursor.sticky`           | `bool`                           | `true`        | A toggle to specify whether the cursor should move as Coq interactively navigates a document (step forward, backward, etc...)                                                                                               |
-| `vscoq.proof.delegation"`             | `"None" \| "Skip" \| "Delegate"` | `"None"`      | Decides which delegation strategy should be used by the server. `Skip` allows to skip proofs which are out of focus and should be used in manual mode. `Delegate` allocates a settable amount of workers to delegate proofs |
+| `vscoq.proof.delegation`             | `"None" \| "Skip" \| "Delegate"` | `"None"`      | Decides which delegation strategy should be used by the server. `Skip` allows to skip proofs which are out of focus and should be used in manual mode. `Delegate` allocates a settable amount of workers to delegate proofs |
 | `vscoq.proof.workers`                 | `int`                            | `1`           | Determines how many workers should be used for proof checking                                                                                                                                                               |
 | `vscoq.proof.block`                   | `bool`                           | `true`        | Determines if the the execution of a document should halt on first error (since version >= 2.1.7 of `vscoqtop`)                                                                                                             |
 
@@ -143,9 +142,10 @@ require'vscoq'.setup {
       -- your mappings, etc
 
       -- In manual mode, use ctrl-alt-{j,k,l} to step.
-      vim.keymap.set({'n', 'i'}, '<C-M-j>', '<Cmd>VsCoq stepForward<CR>', { buffer = bufnr })
-      vim.keymap.set({'n', 'i'}, '<C-M-k>', '<Cmd>VsCoq stepBackward<CR>', { buffer = bufnr })
-      vim.keymap.set({'n', 'i'}, '<C-M-l>', '<Cmd>VsCoq interpretToPoint<CR>', { buffer = bufnr })
+      vim.keymap.set({ 'n', 'i' }, '<C-M-j>', '<Cmd>VsCoq stepForward<CR>', { buffer = bufnr, desc='VsCoq step forward' })
+      vim.keymap.set({ 'n', 'i' }, '<C-M-k>', '<Cmd>VsCoq stepBackward<CR>', { buffer = bufnr, desc='VsCoq step backward' })
+      vim.keymap.set({ 'n', 'i' }, '<C-M-l>', '<Cmd>VsCoq interpretToPoint<CR>', { buffer = bufnr, desc='VsCoq interpret to point' })
+      vim.keymap.set({ 'n', 'i' }, '<C-M-G>',  '<Cmd>VsCoq interpretToEnd<CR>', { buffer = bufnr, desc = 'VsCoq interpret to end' })
     end,
     -- autostart = false, -- use this if you want to manually `:LspStart vscoqtop`.
     -- cmd = { 'vscoqtop', '-bt', '-vscoq-d', 'all' }, -- for debugging the server
