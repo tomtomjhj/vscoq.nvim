@@ -40,7 +40,6 @@ function VSCoqNvim:new(client, config)
     tag_ns = vim.api.nvim_create_namespace('vscoq-tag-' .. client.id),
     ag = vim.api.nvim_create_augroup('vscoq-' .. client.id, { clear = true }),
   }
-  vim.notify('VsCoq client created', vim.log.levels.INFO)
   setmetatable(new, self)
   new:ensure_proofview_panel()
   new:ensure_query_panel()
@@ -107,7 +106,6 @@ function VSCoqNvim:moveCursor(target)
   local bufnr = vim.uri_to_bufnr(target.uri)
   local wins = vim.fn.win_findbuf(bufnr) or {}
   if self.config.proof.mode == 'Manual' and self.config.proof.cursor.sticky then
-    -- Manual mod and sticky
     local position = util.position_api_to_mark(
       util.position_lsp_to_api(bufnr, target.range['end'], self.lc.offset_encoding)
     )
@@ -406,7 +404,6 @@ end
 commands[#commands + 1] = 'resetCoq'
 
 function VSCoqNvim:on_CursorMoved()
-  -- Continuous mod
   if self.config.proof.mode == 'Continuous' then
     -- TODO: debounce_timer
     assert(self:interpretToPoint())

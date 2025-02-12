@@ -75,20 +75,19 @@ lua require'vscoq'.setup()
 
 ## Configurations
 The `setup()` function takes a table with the followings keys:
-* `vscoq`: Settings specific to VsCoq.
-  This is used in both the client and the server.
-  See the `"configuration"` key in vscoq [`package.json`](https://github.com/coq-community/vscoq/blob/main/client/package.json).
+* `vscoq`: Settings specific to VsCoq, used in both the client and the server.
+  This corresponds to the `"configuration"` key in VsCoq's [package.json][].
 * `lsp`: The settings forwarded to `:help lspconfig-setup`. `:help vim.lsp.ClientConfig`.
 
 ### Basic LSP configuration
 
-In vscoq [package.json](https://github.com/coq-community/vscoq/blob/main/client/package.json) should be configured as nvim's `lsp` configuration
+Some settings in VsCoq's [package.json][] should be configured in nvim's LSP client configuration:
 * `"vscoq.path"` and `"vscoq.args"` → `lsp.cmd`
 * `"vscoq.trace.server"` → `lsp.trace`
 
 | Key                | Type                               | Default value                      | Description                                                                                                                    |
 | ------------------ | ---------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `lsp.cmd`          | `string`                           | `""` (automaticaly get `vscoqtop`)  | Specify the path to `vscoqtop` (e.g. `path/to/vscoq/bin/vscoqtop`) and arguments passed                                        |
+| `lsp.cmd`          | `string[]`                         | `{ "vscoqtop" }`                   | Path to `vscoqtop` (e.g. `path/to/vscoq/bin/vscoqtop`) and arguments passed                                                    |
 | `lsp.trace`        | `"off" \| "messages" \| "verbose"` | `"off"`                            | Toggles the tracing of communications between the server and client                                                            |
 
 ### Memory management (since >= vscoq 2.1.7)
@@ -112,7 +111,7 @@ In vscoq [package.json](https://github.com/coq-community/vscoq/blob/main/client/
 | `vscoq.proof.mode`                    | `"Continuous" \| "Manual"`       | `"Manual"`    | Decide whether documents should checked continuously or using the classic navigation commmands (defaults to `Manual`)                                                                                                       |
 | `vscoq.proof.pointInterpretationMode` | `"Cursor" \| "NextCommand"`      | `"Cursor"`    | Determines the point to which the proof should be check to when using the 'Interpret to point' command                                                                                                                      |
 | `vscoq.proof.cursor.sticky`           | `bool`                           | `true`        | A toggle to specify whether the cursor should move as Coq interactively navigates a document (step forward, backward, etc...)                                                                                               |
-| `vscoq.proof.delegation`             | `"None" \| "Skip" \| "Delegate"` | `"None"`      | Decides which delegation strategy should be used by the server. `Skip` allows to skip proofs which are out of focus and should be used in manual mode. `Delegate` allocates a settable amount of workers to delegate proofs |
+| `vscoq.proof.delegation`              | `"None" \| "Skip" \| "Delegate"` | `"None"`      | Decides which delegation strategy should be used by the server. `Skip` allows to skip proofs which are out of focus and should be used in manual mode. `Delegate` allocates a settable amount of workers to delegate proofs |
 | `vscoq.proof.workers`                 | `int`                            | `1`           | Determines how many workers should be used for proof checking                                                                                                                                                               |
 | `vscoq.proof.block`                   | `bool`                           | `true`        | Determines if the the execution of a document should halt on first error (since version >= 2.1.7 of `vscoqtop`)                                                                                                             |
 
@@ -165,3 +164,5 @@ Do not call `lspconfig.vscoqtop.setup()` yourself.
 ## See also
 * [coq.ctags](https://github.com/tomtomjhj/coq.ctags) for go-to-definition.
 * [coq-lsp.nvim](https://github.com/tomtomjhj/coq-lsp.nvim) for `coq-lsp` client.
+
+[package.json]: https://github.com/coq-community/vscoq/blob/main/client/package.json
