@@ -12,69 +12,25 @@ local M = {}
 -- https://github.com/coq-community/vscoq/blob/main/docs/protocol.md#configuration
 --
 -- The "Coq configuration" (vscoq.trace.server, ...) are low-level client-only config handled by vim.lsp.start_client().
+
+local Config = require('vscoq.config')
+
 ---@class vscoq.Config
-M.default_config = {
-  memory = {
-    limit = 4,
-  },
-  goals = {
-    -- used for initAppSettings
-    ---@type "Tabs"|"List"
-    display = 'List',
-    diff = {
-      ---@type "off"|"on"|"removed"
-      mode = 'off',
-    },
-    messages = {
-      ---@type boolean
-      full = true,
-    },
-    maxDepth = 17,
-  },
-  proof = {
-    ---@enum
-    ---|0 # Manual
-    ---|1 # Continuous
-    mode = 0,
-    ---@enum
-    ---|0 # Cursor
-    ---|1 # NextCommand
-    pointInterpretationMode = 0,
-    cursor = {
-      ---@type boolean
-      sticky = true,
-    },
-    ---@type "None"|"Skip"|"Delegate"
-    delegation = 'None',
-    ---@type integer
-    workers = 1,
-    block = true,
-  },
-  completion = {
-    ---@type boolean
-    enable = false,
-    ---@type integer
-    unificationLimit = 100,
-    ---@type 0|1
-    algorithm = 1,
-  },
-  diagnostics = {
-    ---@type boolean
-    full = false,
-  },
-}
+M.default_config = Config
 
 ---@type table<integer, VSCoqNvim> map from client id
 M.clients = {}
 
-local function make_on_init(user_on_init)
+---@param config vscoq.Config
+---@return fun(client: vim.lsp.Client, initialize_result: lsp.InitializeResult)
+local function make_on_init(user_on_init, config)
   return function(client, initialize_result)
     local ok, VSCoqNvim = pcall(require, 'vscoq.client')
     if not ok then
       vim.print('[vscoq.nvim] on_init failed', VSCoqNvim)
       return
     end
-    M.clients[client.id] = VSCoqNvim:new(client)
+    M.clients[client.id] = VSCoqNvim:new(client, config)
     M.clients[client.id]:panels()
     if user_on_init then
       user_on_init(client, initialize_result)
@@ -132,8 +88,9 @@ end
 ---@param opts { vscoq?: table<string,any>, lsp?: table<string,any> }
 function M.setup(opts)
   opts = opts or {}
-  opts.vscoq = vim.tbl_deep_extend('keep', opts.vscoq or {}, M.default_config)
   opts.lsp = opts.lsp or {}
+  opts.vscoq = Config:new(opts.vscoq or {})
+
   opts.lsp.handlers = vim.tbl_extend('keep', opts.lsp.handlers or {}, {
     ['vscoq/updateHighlights'] = updateHighlights_notification_handler,
     ['vscoq/moveCursor'] = moveCursor_notification_handler,
@@ -141,7 +98,7 @@ function M.setup(opts)
     ['vscoq/proofView'] = proofView_notification_handler,
   })
   local user_on_init = opts.lsp.on_init
-  opts.lsp.on_init = make_on_init(user_on_init)
+  opts.lsp.on_init = make_on_init(user_on_init, opts.vscoq)
   local user_on_attach = opts.lsp.on_attach
   opts.lsp.on_attach = make_on_attach(user_on_attach)
   local user_on_exit = opts.lsp.on_exit
@@ -150,7 +107,7 @@ function M.setup(opts)
     opts.lsp.init_options == nil and opts.lsp.settings == nil,
     "[vscoq.nvim] settings must be passed via 'vscoq' field"
   )
-  opts.lsp.init_options = vim.deepcopy(opts.vscoq)
+  opts.lsp.init_options = opts.vscoq:to_lsp_options()
   require('lspconfig').vscoqtop.setup(opts.lsp)
 end
 
