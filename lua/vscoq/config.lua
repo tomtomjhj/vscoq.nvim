@@ -5,10 +5,6 @@ local Config = {
     limit = 4,
   },
   goals = {
-    -- used for initAppSettings
-    ---@type "Tabs"|"List"
-    display = 'List',
-
     diff = {
       ---@type "off"|"on"|"removed"
       mode = 'off',
@@ -63,7 +59,6 @@ local Config = {
 Config.__index = Config
 
 -- keys in config
-local goals_display_keys = { 'Tabs', 'List' }
 local goals_diff_keys = { 'off', 'on', 'removed' }
 local proof_delegation_keys = { 'None', 'Skip', 'Delegate' }
 local proof_mode_keys = { 'Manual', 'Continuous' }
@@ -85,13 +80,6 @@ function Config:new(opts)
       'positive number',
     },
     ['vscoq.goals'] = { config.goals, 'table' },
-    ['vscoq.goals.display'] = {
-      config.goals.display,
-      function(x)
-        return type(x) == 'string' and vim.list_contains(goals_display_keys, x)
-      end,
-      'one of ' .. table.concat(goals_display_keys, ', '),
-    },
     ['vscoq.goals.diff'] = { config.goals.diff, 'table' },
     ['vscoq.goals.diff.mode'] = {
       config.goals.diff.mode,

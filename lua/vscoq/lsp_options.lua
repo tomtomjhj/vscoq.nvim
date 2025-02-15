@@ -9,10 +9,6 @@ local LspOptions = {
     limit = 4,
   },
   goals = {
-    -- used for initAppSettings
-    ---@type "Tabs"|"List"
-    display = 'List',
-
     diff = {
       ---@type "off"|"on"|"removed"
       mode = 'off',

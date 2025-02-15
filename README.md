@@ -100,10 +100,9 @@ Some settings in VsCoq's [package.json][] should be configured in nvim's LSP cli
 
 | Key                         | Type                         | Default value | Description                                                                                                   |
 | --------------------------- | ---------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------- |
-| `vscoq.goals.display`       | `"Tabs" \| "List"`           | `"List"`      | Decide whether to display goals in separate tabs or as a list of collapsibles.                                |
 | `vscoq.goals.diff.mode`     | `"on" \| "off" \| "removed"` | `"off"`       | Toggles diff mode. If set to `removed`, only removed characters are shown                                     |
 | `vscoq.goals.messages.full` | `bool`                       | `false`       | A toggle to include warnings and errors in the proof view                                                     |
-| `vscoq.goals.maxDepth`      | `int`                        | `17`          | A setting to determine at which point the goal display starts elliding (since version >= 2.1.7 of `vscoqtop`) |
+| `vscoq.goals.maxDepth`      | `int`                        | `17`          | A setting to determine at which point the goal display starts eliding (since version >= 2.1.7 of `vscoqtop`) |
 
 ### Proof checking
 | Key                                   | Type                             | Default value | Description                                                                                                                                                                                                                 |
@@ -144,7 +143,7 @@ require'vscoq'.setup {
       vim.keymap.set({ 'n', 'i' }, '<C-M-j>', '<Cmd>VsCoq stepForward<CR>', { buffer = bufnr, desc='VsCoq step forward' })
       vim.keymap.set({ 'n', 'i' }, '<C-M-k>', '<Cmd>VsCoq stepBackward<CR>', { buffer = bufnr, desc='VsCoq step backward' })
       vim.keymap.set({ 'n', 'i' }, '<C-M-l>', '<Cmd>VsCoq interpretToPoint<CR>', { buffer = bufnr, desc='VsCoq interpret to point' })
-      vim.keymap.set({ 'n', 'i' }, '<C-M-G>',  '<Cmd>VsCoq interpretToEnd<CR>', { buffer = bufnr, desc = 'VsCoq interpret to end' })
+      vim.keymap.set({ 'n', 'i' }, '<C-M-G>', '<Cmd>VsCoq interpretToEnd<CR>', { buffer = bufnr, desc = 'VsCoq interpret to end' })
     end,
     -- autostart = false, -- use this if you want to manually `:LspStart vscoqtop`.
     -- cmd = { 'vscoqtop', '-bt', '-vscoq-d', 'all' }, -- for debugging the server
