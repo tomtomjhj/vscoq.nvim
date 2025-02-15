@@ -4,6 +4,7 @@ local Config = {
     ---@type integer
     limit = 4,
   },
+
   goals = {
     diff = {
       ---@type "off"|"on"|"removed"
@@ -18,6 +19,7 @@ local Config = {
     ---@type integer
     maxDepth = 17,
   },
+
   proof = {
     ---@type "Manual"|"Continuous"
     mode = 'Manual',
@@ -39,6 +41,7 @@ local Config = {
     ---@type boolean
     block = true,
   },
+
   completion = {
     ---@type boolean
     enable = false,

@@ -1,6 +1,8 @@
 -- ## Lsp Options
 -- Configuration for the language server
 -- (is separate to *Config* because this is what's actually sent to the server)
+-- is following setting of vscoqtop
+--- https://github.com/coq/vscoq/blob/main/language-server/protocol/settings.ml
 
 ---@class vscoq.LspOptions
 local LspOptions = {
@@ -8,6 +10,7 @@ local LspOptions = {
     ---@type integer
     limit = 4,
   },
+
   goals = {
     diff = {
       ---@type "off"|"on"|"removed"
@@ -18,10 +21,8 @@ local LspOptions = {
       ---@type boolean
       full = true,
     },
-
-    ---@type integer
-    maxDepth = 17,
   },
+
   proof = {
     ---@enum
     ---|0 # Manual
@@ -33,11 +34,6 @@ local LspOptions = {
     ---|1 # NextCommand
     pointInterpretationMode = 0,
 
-    cursor = {
-      ---@type boolean
-      sticky = true,
-    },
-
     ---@type "None"|"Skip"|"Delegate"
     delegation = 'None',
 
@@ -47,6 +43,7 @@ local LspOptions = {
     ---@type boolean
     block = true,
   },
+
   completion = {
     ---@type boolean
     enable = false,
@@ -58,6 +55,9 @@ local LspOptions = {
     ---|0 # StructuredSplitUnification
     ---|1 # SplitTypeIntersection
     algorithm = 1,
+
+    -- atomicFactor = 5.0,
+    -- sizeFactor = 1.0,
   },
 
   diagnostics = {
@@ -87,11 +87,13 @@ local proof_pointInterpretationMode_table = {
 function LspOptions:new(config)
   local lsp_opts = {
     memory = vim.deepcopy(config.memory),
-    goals = vim.deepcopy(config.goals),
+    goals = {
+      diff = vim.deepcopy(config.goals.diff),
+      messages = vim.deepcopy(config.goals.messages),
+    },
     proof = {
       mode = proof_mode_table[config.proof.mode],
       pointInterpretationMode = proof_pointInterpretationMode_table[config.proof.pointInterpretationMode],
-      cursor = vim.deepcopy(config.proof.cursor),
       delegation = config.proof.delegation,
       workers = config.proof.workers,
       block = config.proof.block,
